@@ -46,69 +46,25 @@ public class servidor {
                 }
             }
 
-            Random rand = new Random();
-            boolean seguirJugando = true;
+            boolean seguirEnSesion = true;
+            while (seguirEnSesion) {
+                salida.println("MENU: ¿Qué quieres hacer? (jugar/mensaje/salir)");
+                String opcion = entrada.readLine();
 
-            while (seguirJugando) {
-                int secreto = rand.nextInt(10) + 1;
-                int intentos = 0;
-                String estadoActual = "INICIO";
-
-                while (!estadoActual.equals("FIN") && !estadoActual.equals("PREGUNTAR_REINICIO")) {
-                    if (estadoActual.equals("INICIO")) {
-                        salida.println("Bienvenido. Adivina un numero del 1 al 10. Tienes 3 intentos.");
-                        estadoActual = "JUGANDO";
-                    } else if (estadoActual.equals("JUGANDO")) {
-                        String mensaje = entrada.readLine();
-                        if (mensaje == null) {
-                            estadoActual = "FIN";
-                            continue;
-                        }
-
-                        int numero;
-                        try {
-                            numero = Integer.parseInt(mensaje);
-                        } catch (NumberFormatException e) {
-                            salida.println("Caracter no válido. Ingresa un numero entre 1 y 10.");
-                            continue;
-                        }
-
-                        if (numero < 1 || numero > 10) {
-                            salida.println("El numero debe estar entre 1 y 10.");
-                            continue;
-                        }
-
-                        intentos++;
-
-                        if (numero == secreto) {
-                            estadoActual = "GANASTE";
-                        } else if (numero < secreto) {
-                            if (intentos < 3) {
-                                salida.println("El numero es mayor. Intentos restantes: " + (3 - intentos));
-                            } else {
-                                estadoActual = "PERDISTE";
-                            }
-                        } else {
-                            if (intentos < 3) {
-                                salida.println("El numero es menor. Intentos restantes: " + (3 - intentos));
-                            } else {
-                                estadoActual = "PERDISTE";
-                            }
-                        }
-                    } else if (estadoActual.equals("GANASTE")) {
-                        salida.println("¡ADIVINASTE! El numero era: " + secreto);
-                        estadoActual = "PREGUNTAR_REINICIO";
-                    } else {
-                        salida.println("NO ADIVINASTE MENSO. El numero correcto era: " + secreto);
-                        estadoActual = "PREGUNTAR_REINICIO";
-                    }
+                if (opcion == null) {
+                    seguirEnSesion = false;
+                    continue;
                 }
 
-                salida.println("¿Quieres jugar otra vez? (si/no)");
-                String respuesta = entrada.readLine();
-                if (respuesta == null || respuesta.equalsIgnoreCase("no")) {
-                    salida.println("Adiós, gracias por jugar.");
-                    seguirJugando = false;
+                if (opcion.equalsIgnoreCase("jugar")) {
+                    jugarAdivinaNumero(entrada, salida);
+                } else if (opcion.equalsIgnoreCase("mensaje")) {
+                    chatearConCliente(entrada, salida);
+                } else if (opcion.equalsIgnoreCase("salir")) {
+                    salida.println("Sesión cerrada. Adiós.");
+                    seguirEnSesion = false;
+                } else {
+                    salida.println("Opción no válida. Por favor, elige 'jugar', 'mensaje' o 'salir'.");
                 }
             }
 
@@ -116,6 +72,76 @@ public class servidor {
             System.out.println("Conexión cerrada.");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void jugarAdivinaNumero(BufferedReader entrada, PrintWriter salida) throws IOException {
+        Random rand = new Random();
+        boolean seguirJugando = true;
+
+        while (seguirJugando) {
+            int secreto = rand.nextInt(10) + 1;
+            int intentos = 0;
+            salida.println("JUEGO: Bienvenido. Adivina un numero del 1 al 10. Tienes 3 intentos.");
+
+            boolean juegoActivo = true;
+            while (juegoActivo) {
+                String mensaje = entrada.readLine();
+                if (mensaje == null) {
+                    juegoActivo = false;
+                    seguirJugando = false;
+                    continue;
+                }
+
+                int numero;
+                try {
+                    numero = Integer.parseInt(mensaje);
+                } catch (NumberFormatException e) {
+                    salida.println("Caracter no válido. Ingresa un numero entre 1 y 10.");
+                    continue;
+                }
+
+                if (numero < 1 || numero > 10) {
+                    salida.println("El numero debe estar entre 1 y 10.");
+                    continue;
+                }
+
+                intentos++;
+
+                if (numero == secreto) {
+                    salida.println("¡GANASTE! El numero era: " + secreto);
+                    juegoActivo = false;
+                } else if (intentos >= 3) {
+                    salida.println("PERDISTE. El numero correcto era: " + secreto);
+                    juegoActivo = false;
+                } else if (numero < secreto) {
+                    salida.println("El numero es mayor. Intentos restantes: " + (3 - intentos));
+                } else {
+                    salida.println("El numero es menor. Intentos restantes: " + (3 - intentos));
+                }
+            }
+
+            salida.println("JUEGO_TERMINADO: ¿Quieres jugar otra vez? (si/no)");
+            String respuesta = entrada.readLine();
+            if (respuesta == null || respuesta.equalsIgnoreCase("no")) {
+                salida.println("JUEGO_SALIDA: Gracias por jugar.");
+                seguirJugando = false;
+            }
+        }
+    }
+
+    private static void chatearConCliente(BufferedReader entrada, PrintWriter salida) throws IOException {
+        salida.println("CHAT: Has entrado al modo de mensajería. Escribe un mensaje. Escribe 'salir' para volver al menú.");
+        boolean enChat = true;
+        while (enChat) {
+            String mensaje = entrada.readLine();
+            if (mensaje == null || mensaje.equalsIgnoreCase("salir")) {
+                salida.println("CHAT_SALIDA: Saliendo del chat.");
+                enChat = false;
+                continue;
+            }
+            System.out.println("Mensaje del cliente: " + mensaje);
+            salida.println("Mensaje recibido por el servidor.");
         }
     }
 
