@@ -195,6 +195,7 @@ public class servidor {
                 }
             } else if (comando.equalsIgnoreCase("leer")) {
                 salida.println("MENSAJES_RECIBIDOS:");
+                leerMensajes(salida, usuarioRemitente);
                 salida.println("MENSAJES_FIN");
             } else if (comando.equalsIgnoreCase("volver")) {
                 salida.println("MENSAJE_SALIDA: Saliendo de la mensajería.");
@@ -211,6 +212,20 @@ public class servidor {
             bw.newLine();
         } catch (IOException e) {
             System.err.println("Error al guardar el mensaje: " + e.getMessage());
+        }
+    }
+
+    private static void leerMensajes(PrintWriter salida, String usuarioDestinatario) {
+        try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(SEPARADOR);
+                if (partes.length >= 3 && partes[1].equals(usuarioDestinatario)) {
+                    salida.println("De: " + partes[0] + " -> " + partes[2]);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error al leer los mensajes: " + e.getMessage());
         }
     }
 }
