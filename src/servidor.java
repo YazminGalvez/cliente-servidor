@@ -4,6 +4,8 @@ import java.util.Random;
 
 public class servidor {
     private static final String USUARIOS = "usuarios.txt";
+    private static final String MENSAJES = "mensajes.txt";
+    private static final String SEPARADOR = "::";
 
     public static void main(String[] args) {
         int puerto = 8080;
@@ -15,6 +17,7 @@ public class servidor {
             BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
 
+            String usuarioLogueado = "";
             boolean loggedIn = false;
             while (!loggedIn) {
                 String usuario = entrada.readLine();
@@ -24,6 +27,7 @@ public class servidor {
                     salida.println("LOGIN_FALLIDO: Datos no recibidos.");
                     continue;
                 }
+                usuarioLogueado = usuario;
 
                 int resultado = validarUsuario(usuario, contrasena);
 
@@ -59,7 +63,7 @@ public class servidor {
                 if (opcion.equalsIgnoreCase("jugar")) {
                     jugarAdivinaNumero(entrada, salida);
                 } else if (opcion.equalsIgnoreCase("mensaje")) {
-                    chatearConCliente(entrada, salida);
+                    manejarMensajeria(entrada, salida, usuarioLogueado);
                 } else if (opcion.equalsIgnoreCase("salir")) {
                     salida.println("Sesión cerrada. Adiós.");
                     seguirEnSesion = false;
@@ -72,6 +76,45 @@ public class servidor {
             System.out.println("Conexión cerrada.");
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static int validarUsuario(String usuario, String contrasena) {
+        try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
+            String linea;
+            boolean usuarioEncontrado = false;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(",");
+                if (partes.length == 2) {
+                    String userEnArchivo = partes[0].trim();
+                    String passEnArchivo = partes[1].trim();
+                    if (userEnArchivo.equals(usuario)) {
+                        usuarioEncontrado = true;
+                        if (passEnArchivo.equals(contrasena)) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
+                    }
+                }
+            }
+            if (!usuarioEncontrado) {
+                return -1;
+            }
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de usuarios: " + e.getMessage());
+        }
+        return -2;
+    }
+
+    private static boolean registrarUsuario(String usuario, String contrasena) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(USUARIOS, true))) {
+            bw.write(usuario + "," + contrasena);
+            bw.newLine();
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al registrar el usuario: " + e.getMessage());
+            return false;
         }
     }
 
@@ -130,57 +173,44 @@ public class servidor {
         }
     }
 
-    private static void chatearConCliente(BufferedReader entrada, PrintWriter salida) throws IOException {
-        salida.println("CHAT: Has entrado al modo de mensajería. Escribe un mensaje. Escribe 'salir' para volver al menú.");
-        boolean enChat = true;
-        while (enChat) {
-            String mensaje = entrada.readLine();
-            if (mensaje == null || mensaje.equalsIgnoreCase("salir")) {
-                salida.println("CHAT_SALIDA: Saliendo del chat.");
-                enChat = false;
+    private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioRemitente) throws IOException {
+        salida.println("CHAT_MENU: Elige una opción: (enviar/leer/volver)");
+        boolean enMensajeria = true;
+        while (enMensajeria) {
+            String comando = entrada.readLine();
+            if (comando == null) {
+                enMensajeria = false;
                 continue;
             }
-            System.out.println("Mensaje del cliente: " + mensaje);
-            salida.println("Mensaje recibido por el servidor.");
-        }
-    }
-
-    private static int validarUsuario(String usuario, String contrasena) {
-        try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
-            String linea;
-            boolean usuarioEncontrado = false;
-            while ((linea = br.readLine()) != null) {
-                String[] partes = linea.split(",");
-                if (partes.length == 2) {
-                    String userEnArchivo = partes[0].trim();
-                    String passEnArchivo = partes[1].trim();
-                    if (userEnArchivo.equals(usuario)) {
-                        usuarioEncontrado = true;
-                        if (passEnArchivo.equals(contrasena)) {
-                            return 1;
-                        } else {
-                            return 0;
-                        }
-                    }
+            if (comando.equalsIgnoreCase("enviar")) {
+                salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
+                String destinatario = entrada.readLine();
+                salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje. (max 255 caracteres)");
+                String contenido = entrada.readLine();
+                if (destinatario != null && contenido != null) {
+                    guardarMensaje(usuarioRemitente, destinatario, contenido);
+                    salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                } else {
+                    salida.println("ERROR: Datos no válidos.");
                 }
+            } else if (comando.equalsIgnoreCase("leer")) {
+                salida.println("MENSAJES_RECIBIDOS:");
+                salida.println("MENSAJES_FIN");
+            } else if (comando.equalsIgnoreCase("volver")) {
+                salida.println("MENSAJE_SALIDA: Saliendo de la mensajería.");
+                enMensajeria = false;
+            } else {
+                salida.println("OPCION_INVALIDA: Comando no válido.");
             }
-            if (!usuarioEncontrado) {
-                return -1;
-            }
-        } catch (IOException e) {
-            System.err.println("Error al leer el archivo de usuarios: " + e.getMessage());
         }
-        return -2;
     }
 
-    private static boolean registrarUsuario(String usuario, String contrasena) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(USUARIOS, true))) {
-            bw.write(usuario + "," + contrasena);
+    private static void guardarMensaje(String remitente, String destinatario, String mensaje) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(MENSAJES, true))) {
+            bw.write(remitente + SEPARADOR + destinatario + SEPARADOR + mensaje);
             bw.newLine();
-            return true;
         } catch (IOException e) {
-            System.err.println("Error al registrar el usuario: " + e.getMessage());
-            return false;
+            System.err.println("Error al guardar el mensaje: " + e.getMessage());
         }
     }
 }
