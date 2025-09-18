@@ -1,8 +1,4 @@
 import java.io.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.*;
 import java.util.Scanner;
 
@@ -72,6 +68,7 @@ public class cliente {
     }
 
     private static void jugarAdivinaNumero(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        // ... (el código de jugarAdivinaNumero se mantiene igual)
         boolean seguirJugando = true;
         while (seguirJugando) {
             String mensaje = entrada.readLine();
@@ -111,12 +108,18 @@ public class cliente {
         boolean enChat = true;
         while (enChat) {
             System.out.print("Tú: ");
-            String mensaje = scanner.nextLine();
-            salida.println(mensaje);
+            String comando = scanner.nextLine();
+            salida.println(comando);
 
-            if (mensaje.equalsIgnoreCase("salir")) {
+            if (comando.equalsIgnoreCase("leer")) {
+                String respuestaServidor;
+
+                while (!(respuestaServidor = entrada.readLine()).equalsIgnoreCase("MENSAJES_FIN")) {
+                    System.out.println("Servidor: " + respuestaServidor);
+                }
+            } else if (comando.equalsIgnoreCase("volver")) {
                 String respuestaSalida = entrada.readLine();
-                System.out.println(respuestaSalida);
+                System.out.println("Servidor: " + respuestaSalida);
                 enChat = false;
             } else {
                 String respuestaServidor = entrada.readLine();
