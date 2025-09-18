@@ -1,4 +1,8 @@
 import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.*;
 import java.util.Scanner;
 
@@ -68,7 +72,6 @@ public class cliente {
     }
 
     private static void jugarAdivinaNumero(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
-        // ... (el código de jugarAdivinaNumero se mantiene igual)
         boolean seguirJugando = true;
         while (seguirJugando) {
             String mensaje = entrada.readLine();
@@ -107,17 +110,51 @@ public class cliente {
         System.out.println(mensajeInicial);
         boolean enChat = true;
         while (enChat) {
-            System.out.print("Tú: ");
-            String comando = scanner.nextLine();
-            salida.println(comando);
+            System.out.print("Tu elección (enviar/leer/eliminar/volver): ");
+            String mensaje = scanner.nextLine();
+            salida.println(mensaje);
 
-            if (comando.equalsIgnoreCase("leer")) {
-                String respuestaServidor;
-
-                while (!(respuestaServidor = entrada.readLine()).equalsIgnoreCase("MENSAJES_FIN")) {
-                    System.out.println("Servidor: " + respuestaServidor);
+            if (mensaje.equalsIgnoreCase("enviar")) {
+                String respuesta = entrada.readLine();
+                System.out.println("Servidor: " + respuesta);
+                System.out.print("Destinatario: ");
+                String destinatario = scanner.nextLine();
+                salida.println(destinatario);
+                String respuesta2 = entrada.readLine();
+                System.out.println("Servidor: " + respuesta2);
+                System.out.print("Mensaje: ");
+                String contenido = scanner.nextLine();
+                salida.println(contenido);
+                System.out.println(entrada.readLine());
+            } else if (mensaje.equalsIgnoreCase("leer")) {
+                String respuesta = entrada.readLine();
+                System.out.println("Servidor: " + respuesta);
+                while (true) {
+                    String linea = entrada.readLine();
+                    if (linea.equals("MENSAJES_FIN")) {
+                        break;
+                    }
+                    System.out.println(linea);
                 }
-            } else if (comando.equalsIgnoreCase("volver")) {
+            } else if (mensaje.equalsIgnoreCase("eliminar")) {
+                String respuesta = entrada.readLine();
+                System.out.println("Servidor: " + respuesta);
+
+                if (respuesta.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
+                    while (true) {
+                        String linea = entrada.readLine();
+                        if (linea.equals("LISTA_FIN")) {
+                            break;
+                        }
+                        System.out.println(linea);
+                    }
+                    String peticionId = entrada.readLine();
+                    System.out.println(peticionId);
+                    String idMensaje = scanner.nextLine();
+                    salida.println(idMensaje);
+                    System.out.println(entrada.readLine());
+                }
+            } else if (mensaje.equalsIgnoreCase("volver")) {
                 String respuestaSalida = entrada.readLine();
                 System.out.println("Servidor: " + respuestaSalida);
                 enChat = false;

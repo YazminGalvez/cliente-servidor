@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
 
 public class servidor {
     private static final String USUARIOS = "usuarios.txt";
@@ -173,8 +175,8 @@ public class servidor {
         }
     }
 
-    private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioRemitente) throws IOException {
-        salida.println("CHAT_MENU: Elige una opción: (enviar/leer/volver)");
+    private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        salida.println("CHAT_MENU: Elige una opción: (enviar/leer/eliminar/volver)");
         boolean enMensajeria = true;
         while (enMensajeria) {
             String comando = entrada.readLine();
@@ -188,15 +190,17 @@ public class servidor {
                 salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje. (max 255 caracteres)");
                 String contenido = entrada.readLine();
                 if (destinatario != null && contenido != null) {
-                    guardarMensaje(usuarioRemitente, destinatario, contenido);
+                    guardarMensaje(usuarioLogueado, destinatario, contenido);
                     salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
                 } else {
                     salida.println("ERROR: Datos no válidos.");
                 }
             } else if (comando.equalsIgnoreCase("leer")) {
                 salida.println("MENSAJES_RECIBIDOS:");
-                leerMensajes(salida, usuarioRemitente);
+                leerMensajes(salida, usuarioLogueado);
                 salida.println("MENSAJES_FIN");
+            } else if (comando.equalsIgnoreCase("eliminar")) {
+                eliminarMensaje(entrada, salida, usuarioLogueado);
             } else if (comando.equalsIgnoreCase("volver")) {
                 salida.println("MENSAJE_SALIDA: Saliendo de la mensajería.");
                 enMensajeria = false;
@@ -215,17 +219,129 @@ public class servidor {
         }
     }
 
-    private static void leerMensajes(PrintWriter salida, String usuarioDestinatario) {
+    private static void leerMensajes(PrintWriter salida, String usuarioLogueado) {
         try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
             String linea;
             while ((linea = br.readLine()) != null) {
                 String[] partes = linea.split(SEPARADOR);
-                if (partes.length >= 3 && partes[1].equals(usuarioDestinatario)) {
-                    salida.println("De: " + partes[0] + " -> " + partes[2]);
+                if (partes.length >= 3) {
+                    String remitente = partes[0].trim();
+                    String destinatario = partes[1].trim();
+                    String mensaje = partes[2].trim();
+
+
+                    if (remitente.equals(usuarioLogueado) || destinatario.equals(usuarioLogueado)) {
+                        salida.println("De: " + remitente + ", Para: " + destinatario + ", Mensaje: " + mensaje);
+                    }
                 }
             }
         } catch (IOException e) {
             System.err.println("Error al leer los mensajes: " + e.getMessage());
+        }
+    }
+
+    private static void eliminarMensaje(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        List<String> mensajesAMostrar = new ArrayList<>();
+        List<String> lineasOriginales = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
+            String linea;
+            int contador = 1;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(SEPARADOR);
+                lineasOriginales.add(linea);
+                if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
+                    mensajesAMostrar.add(contador + ". De: " + partes[0] + ", Para: " + partes[1] + ", Mensaje: " + partes[2]);
+                    contador++;
+                }
+            }
+        } catch (IOException e) {
+            salida.println("ERROR: No se pudo leer el archivo de mensajes.");
+            return;
+        }
+
+        if (mensajesAMostrar.isEmpty()) {
+            salida.println("INFO: No tienes mensajes para eliminar.");
+            return;
+        }
+
+        salida.println("LISTA_MENSAJES_ELIMINAR:");
+        for (String msg : mensajesAMostrar) {
+            salida.println(msg);
+        }
+        salida.println("LISTA_FIN");
+        salida.println("ELIMINAR_MENSAJE_ID: Ingresa el número del mensaje que quieres eliminar o 0 para cancelar.");
+
+        String idMensaje = entrada.readLine();
+        int indiceAEliminar = -1;
+        try {
+            int opcion = Integer.parseInt(idMensaje);
+            if (opcion > 0 && opcion <= mensajesAMostrar.size()) {
+
+                String mensajeSeleccionado = mensajesAMostrar.get(opcion - 1);
+
+                String mensajeOriginal = null;
+                try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
+                    String linea;
+                    int contador = 0;
+                    while ((linea = br.readLine()) != null) {
+                        String[] partes = linea.split(SEPARADOR);
+                        if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
+                            if (contador == (opcion - 1)) {
+                                mensajeOriginal = linea;
+                                break;
+                            }
+                            contador++;
+                        }
+                    }
+                }
+                if (mensajeOriginal != null) {
+                    if (eliminarLineaDeArchivo(mensajeOriginal)) {
+                        salida.println("MENSAJE_ELIMINADO_EXITO: Mensaje eliminado exitosamente.");
+                    } else {
+                        salida.println("ERROR: No se pudo eliminar el mensaje.");
+                    }
+                } else {
+                    salida.println("ERROR: El mensaje no se encontró para su eliminación.");
+                }
+            } else if (opcion == 0) {
+                salida.println("MENSAJE_ELIMINACION_CANCELADA: Operación cancelada.");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            salida.println("ERROR: Opción no válida. Ingresa un número.");
+            return;
+        }
+    }
+
+    private static boolean eliminarLineaDeArchivo(String lineaAEliminar) {
+        File inputFile = new File(MENSAJES);
+        File tempFile = new File("temp_" + MENSAJES);
+        boolean exito = false;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
+            String lineaActual;
+            while ((lineaActual = reader.readLine()) != null) {
+                if (lineaActual.equals(lineaAEliminar)) {
+                    exito = true;
+                    continue;
+                }
+                writer.write(lineaActual);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        if (exito) {
+            inputFile.delete();
+            return tempFile.renameTo(inputFile);
+        } else {
+            tempFile.delete();
+            return false;
         }
     }
 }

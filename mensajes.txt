@@ -1,4 +1,0 @@
-Yaz::Holis::WOW
-Yaz::Arturo::Hola
-Yaz::Daniel::Hola
-Yaz::Dani::Hola
