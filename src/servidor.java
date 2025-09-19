@@ -54,7 +54,7 @@ public class servidor {
 
             boolean seguirEnSesion = true;
             while (seguirEnSesion) {
-                salida.println("MENU: ¿Qué quieres hacer? (jugar/mensaje/salir)");
+                salida.println("MENU: ¿Qué quieres hacer? (jugar/mensaje/eliminar/salir)");
                 String opcion = entrada.readLine();
 
                 if (opcion == null) {
@@ -66,11 +66,24 @@ public class servidor {
                     jugarAdivinaNumero(entrada, salida);
                 } else if (opcion.equalsIgnoreCase("mensaje")) {
                     manejarMensajeria(entrada, salida, usuarioLogueado);
+                } else if (opcion.equalsIgnoreCase("eliminar")) {
+                    salida.println("CONFIRMACION: ¿Estás seguro de que quieres eliminar tu usuario? (si/no)");
+                    String confirmacion = entrada.readLine();
+                    if (confirmacion != null && confirmacion.equalsIgnoreCase("si")) {
+                        if (eliminarUsuario(usuarioLogueado)) {
+                            salida.println("USUARIO_ELIMINADO: Tu usuario y todos sus datos han sido eliminados.");
+                            seguirEnSesion = false;
+                        } else {
+                            salida.println("ERROR: No se pudo eliminar el usuario.");
+                        }
+                    } else {
+                        salida.println("OPERACION_CANCELADA: La eliminación del usuario ha sido cancelada.");
+                    }
                 } else if (opcion.equalsIgnoreCase("salir")) {
                     salida.println("Sesión cerrada. Adiós.");
                     seguirEnSesion = false;
                 } else {
-                    salida.println("Opción no válida. Por favor, elige 'jugar', 'mensaje' o 'salir'.");
+                    salida.println("Opción no válida. Por favor, elige 'jugar', 'mensaje', 'eliminar' o 'salir'.");
                 }
             }
 
@@ -187,7 +200,7 @@ public class servidor {
             if (comando.equalsIgnoreCase("enviar")) {
                 salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
                 String destinatario = entrada.readLine();
-                salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje. (max 255 caracteres)");
+                salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
                 String contenido = entrada.readLine();
                 if (destinatario != null && contenido != null) {
                     guardarMensaje(usuarioLogueado, destinatario, contenido);
@@ -228,7 +241,6 @@ public class servidor {
                     String remitente = partes[0].trim();
                     String destinatario = partes[1].trim();
                     String mensaje = partes[2].trim();
-
 
                     if (remitente.equals(usuarioLogueado) || destinatario.equals(usuarioLogueado)) {
                         salida.println("De: " + remitente + ", Para: " + destinatario + ", Mensaje: " + mensaje);
@@ -273,13 +285,10 @@ public class servidor {
         salida.println("ELIMINAR_MENSAJE_ID: Ingresa el número del mensaje que quieres eliminar o 0 para cancelar.");
 
         String idMensaje = entrada.readLine();
-        int indiceAEliminar = -1;
         try {
             int opcion = Integer.parseInt(idMensaje);
             if (opcion > 0 && opcion <= mensajesAMostrar.size()) {
-
                 String mensajeSeleccionado = mensajesAMostrar.get(opcion - 1);
-
                 String mensajeOriginal = null;
                 try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
                     String linea;
@@ -296,7 +305,7 @@ public class servidor {
                     }
                 }
                 if (mensajeOriginal != null) {
-                    if (eliminarLineaDeArchivo(mensajeOriginal)) {
+                    if (eliminarLineaDeArchivo(mensajeOriginal, MENSAJES)) {
                         salida.println("MENSAJE_ELIMINADO_EXITO: Mensaje eliminado exitosamente.");
                     } else {
                         salida.println("ERROR: No se pudo eliminar el mensaje.");
@@ -310,13 +319,75 @@ public class servidor {
             }
         } catch (NumberFormatException e) {
             salida.println("ERROR: Opción no válida. Ingresa un número.");
-            return;
         }
     }
 
-    private static boolean eliminarLineaDeArchivo(String lineaAEliminar) {
+    private static boolean eliminarUsuario(String usuario) {
+        if (eliminarUsuarioDeArchivo(usuario) && eliminarMensajesDeUsuario(usuario)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean eliminarUsuarioDeArchivo(String usuarioAEliminar) {
+        File inputFile = new File(USUARIOS);
+        File tempFile = new File("temp_" + USUARIOS);
+        boolean usuarioEncontrado = false;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
+            String lineaActual;
+            while ((lineaActual = reader.readLine()) != null) {
+                if (lineaActual.startsWith(usuarioAEliminar + ",")) {
+                    usuarioEncontrado = true;
+                    continue;
+                }
+                writer.write(lineaActual);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        if (usuarioEncontrado) {
+            inputFile.delete();
+            return tempFile.renameTo(inputFile);
+        } else {
+            tempFile.delete();
+            return false;
+        }
+    }
+
+    private static boolean eliminarMensajesDeUsuario(String usuario) {
         File inputFile = new File(MENSAJES);
         File tempFile = new File("temp_" + MENSAJES);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
+            String lineaActual;
+            while ((lineaActual = reader.readLine()) != null) {
+                String[] partes = lineaActual.split(SEPARADOR);
+                if (partes.length >= 2 && (partes[0].equals(usuario) || partes[1].equals(usuario))) {
+                    continue;
+                }
+                writer.write(lineaActual);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        inputFile.delete();
+        return tempFile.renameTo(inputFile);
+    }
+
+    private static boolean eliminarLineaDeArchivo(String lineaAEliminar, String nombreArchivo) {
+        File inputFile = new File(nombreArchivo);
+        File tempFile = new File("temp_" + nombreArchivo);
         boolean exito = false;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));

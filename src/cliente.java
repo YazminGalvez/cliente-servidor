@@ -1,8 +1,4 @@
 import java.io.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.*;
 import java.util.Scanner;
 
@@ -54,6 +50,19 @@ public class cliente {
                     jugarAdivinaNumero(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("mensaje")) {
                     chatearConServidor(entrada, salida, scanner);
+                } else if (opcion.equalsIgnoreCase("eliminar")) {
+                    String confirmacion = entrada.readLine();
+                    System.out.println("Servidor: " + confirmacion);
+                    if (confirmacion.startsWith("CONFIRMACION")) {
+                        System.out.print("Tu elección: ");
+                        String respuestaConfirmacion = scanner.nextLine();
+                        salida.println(respuestaConfirmacion);
+                        String respuestaServidor = entrada.readLine();
+                        System.out.println("Servidor: " + respuestaServidor);
+                        if (respuestaConfirmacion.equalsIgnoreCase("si")) {
+                            enSesion = false;
+                        }
+                    }
                 } else if (opcion.equalsIgnoreCase("salir")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);

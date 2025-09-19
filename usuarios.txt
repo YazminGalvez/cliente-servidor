@@ -1,4 +1,2 @@
 Yaaaaaa,12345
-Yaz,12345
-Daniel,123
-Dani,123
+Ana,123
