@@ -205,36 +205,54 @@ public class servidor {
     }
 
     private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
-        salida.println("CHAT_MENU: Elige una opcion: (enviar/leer/eliminar/volver)");
         boolean enMensajeria = true;
         while (enMensajeria) {
-            String comando = entrada.readLine();
-            if (comando == null) {
+            salida.println("CHAT_MENU:");
+            salida.println("1. Enviar mensaje");
+            salida.println("2. Leer mensajes");
+            salida.println("3. Eliminar mensaje");
+            salida.println("4. Volver al menu principal");
+            salida.println("Por favor, ingresa el numero de la opcion que desees.");
+
+            String comandoStr = entrada.readLine();
+            if (comandoStr == null) {
                 enMensajeria = false;
                 continue;
             }
-            if (comando.equalsIgnoreCase("enviar")) {
-                salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
-                String destinatario = entrada.readLine();
-                salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
-                String contenido = entrada.readLine();
-                if (destinatario != null && contenido != null) {
-                    guardarMensaje(usuarioLogueado, destinatario, contenido);
-                    salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
-                } else {
-                    salida.println("ERROR: Datos no validos.");
+
+            try {
+                int comando = Integer.parseInt(comandoStr);
+                switch (comando) {
+                    case 1:
+                        salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
+                        String destinatario = entrada.readLine();
+                        salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
+                        String contenido = entrada.readLine();
+                        if (destinatario != null && contenido != null) {
+                            guardarMensaje(usuarioLogueado, destinatario, contenido);
+                            salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                        } else {
+                            salida.println("ERROR: Datos no validos.");
+                        }
+                        break;
+                    case 2:
+                        salida.println("MENSAJES_RECIBIDOS:");
+                        leerMensajes(salida, usuarioLogueado);
+                        salida.println("MENSAJES_FIN");
+                        break;
+                    case 3:
+                        eliminarMensaje(entrada, salida, usuarioLogueado);
+                        break;
+                    case 4:
+                        salida.println("MENSAJE_SALIDA: Saliendo de la mensajeria.");
+                        enMensajeria = false;
+                        break;
+                    default:
+                        salida.println("OPCION_INVALIDA: Comando no valido. Por favor, elige un numero del 1 al 4.");
+                        break;
                 }
-            } else if (comando.equalsIgnoreCase("leer")) {
-                salida.println("MENSAJES_RECIBIDOS:");
-                leerMensajes(salida, usuarioLogueado);
-                salida.println("MENSAJES_FIN");
-            } else if (comando.equalsIgnoreCase("eliminar")) {
-                eliminarMensaje(entrada, salida, usuarioLogueado);
-            } else if (comando.equalsIgnoreCase("volver")) {
-                salida.println("MENSAJE_SALIDA: Saliendo de la mensajeria.");
-                enMensajeria = false;
-            } else {
-                salida.println("OPCION_INVALIDA: Comando no valido.");
+            } catch (NumberFormatException e) {
+                salida.println("ERROR: Opcion no valida. Ingresa un numero.");
             }
         }
     }
@@ -306,7 +324,6 @@ public class servidor {
             if (opcion > 0 && opcion <= mensajesAMostrar.size()) {
                 String mensajeSeleccionado = mensajesAMostrar.get(opcion - 1);
                 String mensajeOriginal = null;
-                int lineIndex = 0;
                 try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
                     String linea;
                     int contador = 0;

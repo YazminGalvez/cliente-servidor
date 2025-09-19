@@ -41,11 +41,10 @@ public class cliente {
             boolean enSesion = true;
             while (enSesion) {
                 String linea;
-                // Leer y mostrar todas las líneas del menú
                 while (!(linea = entrada.readLine()).startsWith("Por favor")) {
                     System.out.println(linea);
                 }
-                System.out.println(linea); // Mostrar la última línea del menú
+                System.out.println(linea);
 
                 System.out.print("Tu eleccion: ");
                 String opcion = scanner.nextLine();
@@ -120,61 +119,79 @@ public class cliente {
     }
 
     private static void chatearConServidor(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
-        String mensajeInicial = entrada.readLine();
-        System.out.println(mensajeInicial);
+        String linea;
+        while (!(linea = entrada.readLine()).startsWith("Por favor")) {
+            System.out.println(linea);
+        }
+        System.out.println(linea);
+
         boolean enChat = true;
         while (enChat) {
-            System.out.print("Tu eleccion (enviar/leer/eliminar/volver): ");
-            String mensaje = scanner.nextLine();
-            salida.println(mensaje);
+            System.out.print("Tu eleccion: ");
+            String opcion = scanner.nextLine();
+            salida.println(opcion);
 
-            if (mensaje.equalsIgnoreCase("enviar")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
-                System.out.print("Destinatario: ");
-                String destinatario = scanner.nextLine();
-                salida.println(destinatario);
-                String respuesta2 = entrada.readLine();
-                System.out.println("Servidor: " + respuesta2);
-                System.out.print("Mensaje: ");
-                String contenido = scanner.nextLine();
-                salida.println(contenido);
-                System.out.println(entrada.readLine());
-            } else if (mensaje.equalsIgnoreCase("leer")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
-                while (true) {
-                    String linea = entrada.readLine();
-                    if (linea.equals("MENSAJES_FIN")) {
-                        break;
-                    }
-                    System.out.println(linea);
-                }
-            } else if (mensaje.equalsIgnoreCase("eliminar")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
-
-                if (respuesta.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
+            switch (opcion) {
+                case "1":
+                    String respuesta = entrada.readLine();
+                    System.out.println("Servidor: " + respuesta);
+                    System.out.print("Destinatario: ");
+                    String destinatario = scanner.nextLine();
+                    salida.println(destinatario);
+                    String respuesta2 = entrada.readLine();
+                    System.out.println("Servidor: " + respuesta2);
+                    System.out.print("Mensaje: ");
+                    String contenido = scanner.nextLine();
+                    salida.println(contenido);
+                    System.out.println(entrada.readLine());
+                    break;
+                case "2":
+                    String respuestaLeer = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaLeer);
                     while (true) {
-                        String linea = entrada.readLine();
-                        if (linea.equals("LISTA_FIN")) {
+                        String lineaLeer = entrada.readLine();
+                        if (lineaLeer.equals("MENSAJES_FIN")) {
                             break;
                         }
-                        System.out.println(linea);
+                        System.out.println(lineaLeer);
                     }
-                    String peticionId = entrada.readLine();
-                    System.out.println(peticionId);
-                    String idMensaje = scanner.nextLine();
-                    salida.println(idMensaje);
-                    System.out.println(entrada.readLine());
+                    break;
+                case "3":
+                    String respuestaEliminar = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaEliminar);
+
+                    if (respuestaEliminar.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
+                        while (true) {
+                            String lineaEliminar = entrada.readLine();
+                            if (lineaEliminar.equals("LISTA_FIN")) {
+                                break;
+                            }
+                            System.out.println(lineaEliminar);
+                        }
+                        String peticionId = entrada.readLine();
+                        System.out.println(peticionId);
+                        String idMensaje = scanner.nextLine();
+                        salida.println(idMensaje);
+                        System.out.println(entrada.readLine());
+                    }
+                    break;
+                case "4":
+                    String respuestaVolver = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaVolver);
+                    enChat = false;
+                    break;
+                default:
+                    String respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    break;
+            }
+
+            if (enChat) {
+                String chatMenuPrompt;
+                while (!(chatMenuPrompt = entrada.readLine()).startsWith("Por favor")) {
+                    System.out.println(chatMenuPrompt);
                 }
-            } else if (mensaje.equalsIgnoreCase("volver")) {
-                String respuestaSalida = entrada.readLine();
-                System.out.println("Servidor: " + respuestaSalida);
-                enChat = false;
-            } else {
-                String respuestaServidor = entrada.readLine();
-                System.out.println("Servidor: " + respuestaServidor);
+                System.out.println(chatMenuPrompt);
             }
         }
     }
