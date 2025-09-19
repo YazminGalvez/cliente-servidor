@@ -54,41 +54,57 @@ public class servidor {
 
             boolean seguirEnSesion = true;
             while (seguirEnSesion) {
-                salida.println("MENU: ¿Qué quieres hacer? (jugar/mensaje/eliminar/salir)");
-                String opcion = entrada.readLine();
+                salida.println("MENU:");
+                salida.println("1. Jugar a Adivina el Numero");
+                salida.println("2. Mensajeria");
+                salida.println("3. Eliminar mi cuenta");
+                salida.println("4. Salir");
+                salida.println("Por favor, ingresa el numero de la opcion que desees.");
+                String opcionStr = entrada.readLine();
 
-                if (opcion == null) {
+                if (opcionStr == null) {
                     seguirEnSesion = false;
                     continue;
                 }
 
-                if (opcion.equalsIgnoreCase("jugar")) {
-                    jugarAdivinaNumero(entrada, salida);
-                } else if (opcion.equalsIgnoreCase("mensaje")) {
-                    manejarMensajeria(entrada, salida, usuarioLogueado);
-                } else if (opcion.equalsIgnoreCase("eliminar")) {
-                    salida.println("CONFIRMACION: ¿Estás seguro de que quieres eliminar tu usuario? (si/no)");
-                    String confirmacion = entrada.readLine();
-                    if (confirmacion != null && confirmacion.equalsIgnoreCase("si")) {
-                        if (eliminarUsuario(usuarioLogueado)) {
-                            salida.println("USUARIO_ELIMINADO: Tu usuario y todos sus datos han sido eliminados.");
+                try {
+                    int opcion = Integer.parseInt(opcionStr);
+                    switch (opcion) {
+                        case 1:
+                            jugarAdivinaNumero(entrada, salida);
+                            break;
+                        case 2:
+                            manejarMensajeria(entrada, salida, usuarioLogueado);
+                            break;
+                        case 3:
+                            salida.println("CONFIRMACION: ¿Estas seguro de que quieres eliminar tu usuario? (si/no)");
+                            String confirmacion = entrada.readLine();
+                            if (confirmacion != null && confirmacion.equalsIgnoreCase("si")) {
+                                if (eliminarUsuario(usuarioLogueado)) {
+                                    salida.println("USUARIO_ELIMINADO: Tu usuario y todos sus datos han sido eliminados.");
+                                    seguirEnSesion = false;
+                                } else {
+                                    salida.println("ERROR: No se pudo eliminar el usuario.");
+                                }
+                            } else {
+                                salida.println("OPERACION_CANCELADA: La eliminacion del usuario ha sido cancelada.");
+                            }
+                            break;
+                        case 4:
+                            salida.println("Sesion cerrada. Adios.");
                             seguirEnSesion = false;
-                        } else {
-                            salida.println("ERROR: No se pudo eliminar el usuario.");
-                        }
-                    } else {
-                        salida.println("OPERACION_CANCELADA: La eliminación del usuario ha sido cancelada.");
+                            break;
+                        default:
+                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 4.");
+                            break;
                     }
-                } else if (opcion.equalsIgnoreCase("salir")) {
-                    salida.println("Sesión cerrada. Adiós.");
-                    seguirEnSesion = false;
-                } else {
-                    salida.println("Opción no válida. Por favor, elige 'jugar', 'mensaje', 'eliminar' o 'salir'.");
+                } catch (NumberFormatException e) {
+                    salida.println("ERROR: Ingresa un numero valido para la opcion.");
                 }
             }
 
             socket.close();
-            System.out.println("Conexión cerrada.");
+            System.out.println("Conexion cerrada.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -155,7 +171,7 @@ public class servidor {
                 try {
                     numero = Integer.parseInt(mensaje);
                 } catch (NumberFormatException e) {
-                    salida.println("Caracter no válido. Ingresa un numero entre 1 y 10.");
+                    salida.println("Caracter no valido. Ingresa un numero entre 1 y 10.");
                     continue;
                 }
 
@@ -189,7 +205,7 @@ public class servidor {
     }
 
     private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
-        salida.println("CHAT_MENU: Elige una opción: (enviar/leer/eliminar/volver)");
+        salida.println("CHAT_MENU: Elige una opcion: (enviar/leer/eliminar/volver)");
         boolean enMensajeria = true;
         while (enMensajeria) {
             String comando = entrada.readLine();
@@ -206,7 +222,7 @@ public class servidor {
                     guardarMensaje(usuarioLogueado, destinatario, contenido);
                     salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
                 } else {
-                    salida.println("ERROR: Datos no válidos.");
+                    salida.println("ERROR: Datos no validos.");
                 }
             } else if (comando.equalsIgnoreCase("leer")) {
                 salida.println("MENSAJES_RECIBIDOS:");
@@ -215,10 +231,10 @@ public class servidor {
             } else if (comando.equalsIgnoreCase("eliminar")) {
                 eliminarMensaje(entrada, salida, usuarioLogueado);
             } else if (comando.equalsIgnoreCase("volver")) {
-                salida.println("MENSAJE_SALIDA: Saliendo de la mensajería.");
+                salida.println("MENSAJE_SALIDA: Saliendo de la mensajeria.");
                 enMensajeria = false;
             } else {
-                salida.println("OPCION_INVALIDA: Comando no válido.");
+                salida.println("OPCION_INVALIDA: Comando no valido.");
             }
         }
     }
@@ -282,7 +298,7 @@ public class servidor {
             salida.println(msg);
         }
         salida.println("LISTA_FIN");
-        salida.println("ELIMINAR_MENSAJE_ID: Ingresa el número del mensaje que quieres eliminar o 0 para cancelar.");
+        salida.println("ELIMINAR_MENSAJE_ID: Ingresa el numero del mensaje que quieres eliminar o 0 para cancelar.");
 
         String idMensaje = entrada.readLine();
         try {
@@ -290,6 +306,7 @@ public class servidor {
             if (opcion > 0 && opcion <= mensajesAMostrar.size()) {
                 String mensajeSeleccionado = mensajesAMostrar.get(opcion - 1);
                 String mensajeOriginal = null;
+                int lineIndex = 0;
                 try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
                     String linea;
                     int contador = 0;
@@ -311,14 +328,14 @@ public class servidor {
                         salida.println("ERROR: No se pudo eliminar el mensaje.");
                     }
                 } else {
-                    salida.println("ERROR: El mensaje no se encontró para su eliminación.");
+                    salida.println("ERROR: El mensaje no se encontro para su eliminacion.");
                 }
             } else if (opcion == 0) {
-                salida.println("MENSAJE_ELIMINACION_CANCELADA: Operación cancelada.");
+                salida.println("MENSAJE_ELIMINACION_CANCELADA: Operacion cancelada.");
                 return;
             }
         } catch (NumberFormatException e) {
-            salida.println("ERROR: Opción no válida. Ingresa un número.");
+            salida.println("ERROR: Opcion no valida. Ingresa un numero.");
         }
     }
 

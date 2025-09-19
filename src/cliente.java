@@ -17,7 +17,7 @@ public class cliente {
                 String usuario = scanner.nextLine();
                 salida.println(usuario);
 
-                System.out.print("Ingresa tu contraseña: ");
+                System.out.print("Ingresa tu contrasena: ");
                 String contrasena = scanner.nextLine();
                 salida.println(contrasena);
 
@@ -40,21 +40,26 @@ public class cliente {
 
             boolean enSesion = true;
             while (enSesion) {
-                String menu = entrada.readLine();
-                System.out.println(menu);
-                System.out.print("Tu elección: ");
+                String linea;
+                // Leer y mostrar todas las líneas del menú
+                while (!(linea = entrada.readLine()).startsWith("Por favor")) {
+                    System.out.println(linea);
+                }
+                System.out.println(linea); // Mostrar la última línea del menú
+
+                System.out.print("Tu eleccion: ");
                 String opcion = scanner.nextLine();
                 salida.println(opcion);
 
-                if (opcion.equalsIgnoreCase("jugar")) {
+                if (opcion.equalsIgnoreCase("1")) {
                     jugarAdivinaNumero(entrada, salida, scanner);
-                } else if (opcion.equalsIgnoreCase("mensaje")) {
+                } else if (opcion.equalsIgnoreCase("2")) {
                     chatearConServidor(entrada, salida, scanner);
-                } else if (opcion.equalsIgnoreCase("eliminar")) {
+                } else if (opcion.equalsIgnoreCase("3")) {
                     String confirmacion = entrada.readLine();
                     System.out.println("Servidor: " + confirmacion);
                     if (confirmacion.startsWith("CONFIRMACION")) {
-                        System.out.print("Tu elección: ");
+                        System.out.print("Tu eleccion: ");
                         String respuestaConfirmacion = scanner.nextLine();
                         salida.println(respuestaConfirmacion);
                         String respuestaServidor = entrada.readLine();
@@ -63,7 +68,7 @@ public class cliente {
                             enSesion = false;
                         }
                     }
-                } else if (opcion.equalsIgnoreCase("salir")) {
+                } else if (opcion.equalsIgnoreCase("4")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
@@ -119,7 +124,7 @@ public class cliente {
         System.out.println(mensajeInicial);
         boolean enChat = true;
         while (enChat) {
-            System.out.print("Tu elección (enviar/leer/eliminar/volver): ");
+            System.out.print("Tu eleccion (enviar/leer/eliminar/volver): ");
             String mensaje = scanner.nextLine();
             salida.println(mensaje);
 
