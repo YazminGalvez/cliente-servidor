@@ -41,11 +41,10 @@ public class cliente {
             boolean enSesion = true;
             while (enSesion) {
                 String linea;
-                // Leer y mostrar todas las líneas del menú
                 while (!(linea = entrada.readLine()).startsWith("Por favor")) {
                     System.out.println(linea);
                 }
-                System.out.println(linea); // Mostrar la última línea del menú
+                System.out.println(linea);
 
                 System.out.print("Tu eleccion: ");
                 String opcion = scanner.nextLine();
@@ -120,61 +119,111 @@ public class cliente {
     }
 
     private static void chatearConServidor(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
-        String mensajeInicial = entrada.readLine();
-        System.out.println(mensajeInicial);
+        String linea;
+        while (!(linea = entrada.readLine()).startsWith("Por favor")) {
+            System.out.println(linea);
+        }
+        System.out.println(linea);
+
         boolean enChat = true;
         while (enChat) {
-            System.out.print("Tu eleccion (enviar/leer/eliminar/volver): ");
-            String mensaje = scanner.nextLine();
-            salida.println(mensaje);
+            System.out.print("Tu eleccion: ");
+            String opcion = scanner.nextLine();
+            salida.println(opcion);
 
-            if (mensaje.equalsIgnoreCase("enviar")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
-                System.out.print("Destinatario: ");
-                String destinatario = scanner.nextLine();
-                salida.println(destinatario);
-                String respuesta2 = entrada.readLine();
-                System.out.println("Servidor: " + respuesta2);
-                System.out.print("Mensaje: ");
-                String contenido = scanner.nextLine();
-                salida.println(contenido);
-                System.out.println(entrada.readLine());
-            } else if (mensaje.equalsIgnoreCase("leer")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
+            switch (opcion) {
+                case "1":
+                    String respuesta = entrada.readLine();
+                    System.out.println("Servidor: " + respuesta);
+                    System.out.print("Destinatario: ");
+                    String destinatario = scanner.nextLine();
+                    salida.println(destinatario);
+                    String respuesta2 = entrada.readLine();
+                    System.out.println("Servidor: " + respuesta2);
+                    System.out.print("Mensaje: ");
+                    String contenido = scanner.nextLine();
+                    salida.println(contenido);
+                    System.out.println(entrada.readLine());
+                    break;
+                case "2":
+                    manejarLecturaPaginada(entrada, salida, scanner);
+                    break;
+                case "3":
+                    String respuestaEliminar = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaEliminar);
+
+                    if (respuestaEliminar.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
+                        while (true) {
+                            String lineaEliminar = entrada.readLine();
+                            if (lineaEliminar.equals("LISTA_FIN")) {
+                                break;
+                            }
+                            System.out.println(lineaEliminar);
+                        }
+                        String peticionId = entrada.readLine();
+                        System.out.println(peticionId);
+                        String idMensaje = scanner.nextLine();
+                        salida.println(idMensaje);
+                        System.out.println(entrada.readLine());
+                    }
+                    break;
+                case "4":
+                    String respuestaVolver = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaVolver);
+                    enChat = false;
+                    break;
+                default:
+                    String respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    break;
+            }
+
+            if (enChat) {
+                String chatMenuPrompt;
+                while (!(chatMenuPrompt = entrada.readLine()).startsWith("Por favor")) {
+                    System.out.println(chatMenuPrompt);
+                }
+                System.out.println(chatMenuPrompt);
+            }
+        }
+    }
+
+    private static void manejarLecturaPaginada(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        boolean enPaginacion = true;
+        while (enPaginacion) {
+            String estadoPaginacion = entrada.readLine();
+            if (estadoPaginacion.startsWith("PAGINACION_INICIO")) {
+                String[] partes = estadoPaginacion.split(":");
+                int paginaActual = Integer.parseInt(partes[1]);
+                int totalPaginas = Integer.parseInt(partes[2]);
+                System.out.println("\n--- Mensajes (Página " + paginaActual + " de " + totalPaginas + ") ---");
+
                 while (true) {
-                    String linea = entrada.readLine();
-                    if (linea.equals("MENSAJES_FIN")) {
+                    String lineaMensaje = entrada.readLine();
+                    if (lineaMensaje.equals("PAGINACION_FIN")) {
                         break;
                     }
-                    System.out.println(linea);
+                    System.out.println(lineaMensaje);
                 }
-            } else if (mensaje.equalsIgnoreCase("eliminar")) {
-                String respuesta = entrada.readLine();
-                System.out.println("Servidor: " + respuesta);
 
-                if (respuesta.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
-                    while (true) {
-                        String linea = entrada.readLine();
-                        if (linea.equals("LISTA_FIN")) {
-                            break;
-                        }
-                        System.out.println(linea);
-                    }
-                    String peticionId = entrada.readLine();
-                    System.out.println(peticionId);
-                    String idMensaje = scanner.nextLine();
-                    salida.println(idMensaje);
-                    System.out.println(entrada.readLine());
-                }
-            } else if (mensaje.equalsIgnoreCase("volver")) {
-                String respuestaSalida = entrada.readLine();
-                System.out.println("Servidor: " + respuestaSalida);
-                enChat = false;
-            } else {
+                String opciones = entrada.readLine();
+                System.out.println(opciones);
+                System.out.print("Tu comando: ");
+                String comando = scanner.nextLine();
+                salida.println(comando);
+
                 String respuestaServidor = entrada.readLine();
                 System.out.println("Servidor: " + respuestaServidor);
+
+                if (respuestaServidor.startsWith("MENSAJE_SALIDA_LECTURA")) {
+                    enPaginacion = false;
+                }
+            } else if (estadoPaginacion.startsWith("INFO: No tienes mensajes para leer.")) {
+                System.out.println("Servidor: " + estadoPaginacion);
+                enPaginacion = false;
+            } else {
+                System.out.println("Servidor: " + estadoPaginacion);
+                enPaginacion = false;
             }
         }
     }
