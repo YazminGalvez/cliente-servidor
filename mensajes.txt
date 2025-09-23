@@ -1,11 +1,4 @@
-Yaz::Daniel::Hola
-Yaz::Arturo::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
-Yaz::Daniel::Hola
+Yaz::Ana::Hola
+Yaz::Ana::Hola
+Yaz::Ana::Hola
+Yaz::Ana::Hola

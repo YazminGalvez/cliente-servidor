@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
 
 public class cliente {
     public static void main(String[] args) {
@@ -149,23 +151,7 @@ public class cliente {
                     manejarLecturaPaginada(entrada, salida, scanner);
                     break;
                 case "3":
-                    String respuestaEliminar = entrada.readLine();
-                    System.out.println("Servidor: " + respuestaEliminar);
-
-                    if (respuestaEliminar.startsWith("LISTA_MENSAJES_ELIMINAR:")) {
-                        while (true) {
-                            String lineaEliminar = entrada.readLine();
-                            if (lineaEliminar.equals("LISTA_FIN")) {
-                                break;
-                            }
-                            System.out.println(lineaEliminar);
-                        }
-                        String peticionId = entrada.readLine();
-                        System.out.println(peticionId);
-                        String idMensaje = scanner.nextLine();
-                        salida.println(idMensaje);
-                        System.out.println(entrada.readLine());
-                    }
+                    manejarEliminacionPaginada(entrada, salida, scanner);
                     break;
                 case "4":
                     String respuestaVolver = entrada.readLine();
@@ -219,6 +205,47 @@ public class cliente {
                     enPaginacion = false;
                 }
             } else if (estadoPaginacion.startsWith("INFO: No tienes mensajes para leer.")) {
+                System.out.println("Servidor: " + estadoPaginacion);
+                enPaginacion = false;
+            } else {
+                System.out.println("Servidor: " + estadoPaginacion);
+                enPaginacion = false;
+            }
+        }
+    }
+
+    private static void manejarEliminacionPaginada(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        boolean enPaginacion = true;
+        while (enPaginacion) {
+            String estadoPaginacion = entrada.readLine();
+            if (estadoPaginacion.startsWith("PAGINACION_INICIO")) {
+                String[] partes = estadoPaginacion.split(":");
+                int paginaActual = Integer.parseInt(partes[1]);
+                int totalPaginas = Integer.parseInt(partes[2]);
+                System.out.println("\n--- Mensajes (Página " + paginaActual + " de " + totalPaginas + ") ---");
+
+                while (true) {
+                    String lineaMensaje = entrada.readLine();
+                    if (lineaMensaje.equals("PAGINACION_FIN")) {
+                        break;
+                    }
+                    System.out.println(lineaMensaje);
+                }
+
+                String opciones = entrada.readLine();
+                System.out.println(opciones);
+                System.out.print("Tu comando: ");
+                String comando = scanner.nextLine();
+                salida.println(comando);
+
+                String respuestaServidor = entrada.readLine();
+                System.out.println("Servidor: " + respuestaServidor);
+
+                if (respuestaServidor.startsWith("MENSAJE_SALIDA_ELIMINAR") || respuestaServidor.startsWith("MENSAJE_ELIMINADO_EXITO")) {
+                    enPaginacion = false;
+                }
+
+            } else if (estadoPaginacion.startsWith("INFO: No tienes mensajes para eliminar.")) {
                 System.out.println("Servidor: " + estadoPaginacion);
                 enPaginacion = false;
             } else {
