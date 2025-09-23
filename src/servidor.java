@@ -236,9 +236,7 @@ public class servidor {
                         }
                         break;
                     case 2:
-                        salida.println("MENSAJES_RECIBIDOS:");
-                        leerMensajes(salida, usuarioLogueado);
-                        salida.println("MENSAJES_FIN");
+                        leerMensajes(entrada, salida, usuarioLogueado);
                         break;
                     case 3:
                         eliminarMensaje(entrada, salida, usuarioLogueado);
@@ -266,39 +264,15 @@ public class servidor {
         }
     }
 
-    private static void leerMensajes(PrintWriter salida, String usuarioLogueado) {
-        try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
-            String linea;
-            while ((linea = br.readLine()) != null) {
-                String[] partes = linea.split(SEPARADOR);
-                if (partes.length >= 3) {
-                    String remitente = partes[0].trim();
-                    String destinatario = partes[1].trim();
-                    String mensaje = partes[2].trim();
-
-                    if (remitente.equals(usuarioLogueado) || destinatario.equals(usuarioLogueado)) {
-                        salida.println("De: " + remitente + ", Para: " + destinatario + ", Mensaje: " + mensaje);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error al leer los mensajes: " + e.getMessage());
-        }
-    }
-
-    private static void eliminarMensaje(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
-        List<String> mensajesAMostrar = new ArrayList<>();
-        List<String> lineasOriginales = new ArrayList<>();
-
+    private static void leerMensajes(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        List<String> mensajesDelUsuario = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
             String linea;
             int contador = 1;
             while ((linea = br.readLine()) != null) {
                 String[] partes = linea.split(SEPARADOR);
-                lineasOriginales.add(linea);
                 if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
-                    mensajesAMostrar.add(contador + ". De: " + partes[0] + ", Para: " + partes[1] + ", Mensaje: " + partes[2]);
-                    contador++;
+                    mensajesDelUsuario.add("De: " + partes[0] + ", Para: " + partes[1] + ", Mensaje: " + partes[2]);
                 }
             }
         } catch (IOException e) {
@@ -306,53 +280,143 @@ public class servidor {
             return;
         }
 
-        if (mensajesAMostrar.isEmpty()) {
+        if (mensajesDelUsuario.isEmpty()) {
+            salida.println("INFO: No tienes mensajes para leer.");
+            return;
+        }
+
+        final int MENSAJES_POR_PAGINA = 10;
+        int totalMensajes = mensajesDelUsuario.size();
+        int totalPaginas = (int) Math.ceil((double) totalMensajes / MENSAJES_POR_PAGINA);
+        int paginaActual = 1;
+
+        boolean enPaginacion = true;
+        while (enPaginacion) {
+            int indiceInicio = (paginaActual - 1) * MENSAJES_POR_PAGINA;
+            int indiceFin = Math.min(indiceInicio + MENSAJES_POR_PAGINA, totalMensajes);
+
+            salida.println("PAGINACION_INICIO:" + paginaActual + ":" + totalPaginas);
+
+            for (int i = indiceInicio; i < indiceFin; i++) {
+                salida.println((i + 1) + ". " + mensajesDelUsuario.get(i));
+            }
+            salida.println("PAGINACION_FIN");
+            salida.println("OPCIONES_LECTURA: (S)iguiente, (A)nterior, (V)olver");
+
+            String comandoCliente = entrada.readLine();
+            if (comandoCliente == null) {
+                enPaginacion = false;
+                continue;
+            }
+
+            if (comandoCliente.equalsIgnoreCase("S")) {
+                if (paginaActual < totalPaginas) {
+                    paginaActual++;
+                    salida.println("PAGINA_CAMBIADA");
+                } else {
+                    salida.println("INFO: Ya estás en la última página.");
+                }
+            } else if (comandoCliente.equalsIgnoreCase("A")) {
+                if (paginaActual > 1) {
+                    paginaActual--;
+                    salida.println("PAGINA_CAMBIADA");
+                } else {
+                    salida.println("INFO: Ya estás en la primera página.");
+                }
+            } else if (comandoCliente.equalsIgnoreCase("V")) {
+                salida.println("MENSAJE_SALIDA_LECTURA: Saliendo de la lectura de mensajes.");
+                enPaginacion = false;
+            } else {
+                salida.println("OPCION_INVALIDA: Comando no reconocido.");
+            }
+        }
+    }
+
+    private static void eliminarMensaje(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        List<String> mensajesDelUsuario = new ArrayList<>();
+        List<String> lineasOriginales = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(SEPARADOR);
+                if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
+                    mensajesDelUsuario.add("De: " + partes[0] + ", Para: " + partes[1] + ", Mensaje: " + partes[2]);
+                    lineasOriginales.add(linea);
+                }
+            }
+        } catch (IOException e) {
+            salida.println("ERROR: No se pudo leer el archivo de mensajes.");
+            return;
+        }
+
+        if (mensajesDelUsuario.isEmpty()) {
             salida.println("INFO: No tienes mensajes para eliminar.");
             return;
         }
 
-        salida.println("LISTA_MENSAJES_ELIMINAR:");
-        for (String msg : mensajesAMostrar) {
-            salida.println(msg);
-        }
-        salida.println("LISTA_FIN");
-        salida.println("ELIMINAR_MENSAJE_ID: Ingresa el numero del mensaje que quieres eliminar o 0 para cancelar.");
+        final int MENSAJES_POR_PAGINA = 10;
+        int totalMensajes = mensajesDelUsuario.size();
+        int totalPaginas = (int) Math.ceil((double) totalMensajes / MENSAJES_POR_PAGINA);
+        int paginaActual = 1;
 
-        String idMensaje = entrada.readLine();
-        try {
-            int opcion = Integer.parseInt(idMensaje);
-            if (opcion > 0 && opcion <= mensajesAMostrar.size()) {
-                String mensajeSeleccionado = mensajesAMostrar.get(opcion - 1);
-                String mensajeOriginal = null;
-                try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
-                    String linea;
-                    int contador = 0;
-                    while ((linea = br.readLine()) != null) {
-                        String[] partes = linea.split(SEPARADOR);
-                        if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
-                            if (contador == (opcion - 1)) {
-                                mensajeOriginal = linea;
-                                break;
-                            }
-                            contador++;
-                        }
-                    }
-                }
-                if (mensajeOriginal != null) {
-                    if (eliminarLineaDeArchivo(mensajeOriginal, MENSAJES)) {
-                        salida.println("MENSAJE_ELIMINADO_EXITO: Mensaje eliminado exitosamente.");
-                    } else {
-                        salida.println("ERROR: No se pudo eliminar el mensaje.");
-                    }
-                } else {
-                    salida.println("ERROR: El mensaje no se encontro para su eliminacion.");
-                }
-            } else if (opcion == 0) {
-                salida.println("MENSAJE_ELIMINACION_CANCELADA: Operacion cancelada.");
-                return;
+        boolean enPaginacion = true;
+        while (enPaginacion) {
+            int indiceInicio = (paginaActual - 1) * MENSAJES_POR_PAGINA;
+            int indiceFin = Math.min(indiceInicio + MENSAJES_POR_PAGINA, totalMensajes);
+
+            salida.println("PAGINACION_INICIO:" + paginaActual + ":" + totalPaginas);
+
+            for (int i = indiceInicio; i < indiceFin; i++) {
+                salida.println((i + 1) + ". " + mensajesDelUsuario.get(i));
             }
-        } catch (NumberFormatException e) {
-            salida.println("ERROR: Opcion no valida. Ingresa un numero.");
+            salida.println("PAGINACION_FIN");
+            salida.println("OPCIONES_PAGINACION: (S)iguiente, (A)nterior, (E)liminar [numero], (V)olver");
+
+            String comandoCliente = entrada.readLine();
+            if (comandoCliente == null) {
+                enPaginacion = false;
+                continue;
+            }
+
+            if (comandoCliente.equalsIgnoreCase("S")) {
+                if (paginaActual < totalPaginas) {
+                    paginaActual++;
+                    salida.println("PAGINA_CAMBIADA");
+                } else {
+                    salida.println("INFO: Ya estás en la última página.");
+                }
+            } else if (comandoCliente.equalsIgnoreCase("A")) {
+                if (paginaActual > 1) {
+                    paginaActual--;
+                    salida.println("PAGINA_CAMBIADA");
+                } else {
+                    salida.println("INFO: Ya estás en la primera página.");
+                }
+            } else if (comandoCliente.toLowerCase().startsWith("e")) {
+                try {
+                    int idMensaje = Integer.parseInt(comandoCliente.substring(1).trim());
+                    if (idMensaje > 0 && idMensaje <= totalMensajes) {
+                        String lineaAEliminar = lineasOriginales.get(idMensaje - 1);
+                        if (eliminarLineaDeArchivo(lineaAEliminar, MENSAJES)) {
+                            salida.println("MENSAJE_ELIMINADO_EXITO: Mensaje eliminado exitosamente.");
+                            enPaginacion = false;
+                            break;
+                        } else {
+                            salida.println("ERROR: No se pudo eliminar el mensaje.");
+                        }
+                    } else {
+                        salida.println("ERROR: Número de mensaje no válido.");
+                    }
+                } catch (NumberFormatException e) {
+                    salida.println("ERROR: Comando de eliminación no válido. Usa 'E' seguido del número.");
+                }
+            } else if (comandoCliente.equalsIgnoreCase("V")) {
+                salida.println("MENSAJE_SALIDA_ELIMINAR: Saliendo de la eliminación de mensajes.");
+                enPaginacion = false;
+            } else {
+                salida.println("OPCION_INVALIDA: Comando no reconocido.");
+            }
         }
     }
 
@@ -414,11 +478,9 @@ public class servidor {
             e.printStackTrace();
             return false;
         }
-
         inputFile.delete();
         return tempFile.renameTo(inputFile);
     }
-
     private static boolean eliminarLineaDeArchivo(String lineaAEliminar, String nombreArchivo) {
         File inputFile = new File(nombreArchivo);
         File tempFile = new File("temp_" + nombreArchivo);
@@ -426,7 +488,6 @@ public class servidor {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
              BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
-
             String lineaActual;
             while ((lineaActual = reader.readLine()) != null) {
                 if (lineaActual.equals(lineaAEliminar)) {
@@ -440,7 +501,6 @@ public class servidor {
             e.printStackTrace();
             return false;
         }
-
         if (exito) {
             inputFile.delete();
             return tempFile.renameTo(inputFile);
