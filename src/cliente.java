@@ -32,10 +32,13 @@ public class cliente {
                     System.out.print("¿Quieres registrarte con este usuario? (si/no): ");
                     String respuestaRegistro = scanner.nextLine();
                     salida.println(respuestaRegistro);
-                    String respuestaRegistroServidor = entrada.readLine();
-                    System.out.println("Servidor: " + respuestaRegistroServidor);
-                    if (respuestaRegistroServidor.equals("REGISTRO_EXITOSO")) {
-                        break;
+                    // Solo esperamos la respuesta del servidor si la respuesta fue 'si'
+                    if (respuestaRegistro.equalsIgnoreCase("si")) {
+                        String respuestaRegistroServidor = entrada.readLine();
+                        System.out.println("Servidor: " + respuestaRegistroServidor);
+                        if (respuestaRegistroServidor.equals("REGISTRO_EXITOSO")) {
+                            break;
+                        }
                     }
                 }
             }
@@ -43,7 +46,7 @@ public class cliente {
             boolean enSesion = true;
             while (enSesion) {
                 String linea;
-                while (!(linea = entrada.readLine()).startsWith("Por favor")) {
+                while ((linea = entrada.readLine()) != null && !linea.startsWith("Por favor")) {
                     System.out.println(linea);
                 }
                 System.out.println(linea);
@@ -78,9 +81,7 @@ public class cliente {
                     System.out.println(respuestaInvalida);
                 }
             }
-
             socket.close();
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -121,14 +122,14 @@ public class cliente {
     }
 
     private static void chatearConServidor(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
-        String linea;
-        while (!(linea = entrada.readLine()).startsWith("Por favor")) {
-            System.out.println(linea);
-        }
-        System.out.println(linea);
-
         boolean enChat = true;
         while (enChat) {
+            String chatMenuPrompt;
+            while ((chatMenuPrompt = entrada.readLine()) != null && !chatMenuPrompt.startsWith("Por favor")) {
+                System.out.println(chatMenuPrompt);
+            }
+            System.out.println(chatMenuPrompt);
+
             System.out.print("Tu eleccion: ");
             String opcion = scanner.nextLine();
             salida.println(opcion);
@@ -162,14 +163,6 @@ public class cliente {
                     String respuestaServidor = entrada.readLine();
                     System.out.println("Servidor: " + respuestaServidor);
                     break;
-            }
-
-            if (enChat) {
-                String chatMenuPrompt;
-                while (!(chatMenuPrompt = entrada.readLine()).startsWith("Por favor")) {
-                    System.out.println(chatMenuPrompt);
-                }
-                System.out.println(chatMenuPrompt);
             }
         }
     }
