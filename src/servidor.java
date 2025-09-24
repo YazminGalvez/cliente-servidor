@@ -56,9 +56,10 @@ public class servidor {
             while (seguirEnSesion) {
                 salida.println("MENU:");
                 salida.println("1. Jugar a Adivina el Numero");
-                salida.println("2. Mensajeria");
-                salida.println("3. Eliminar mi cuenta");
-                salida.println("4. Salir");
+                salida.println("2. Ver usuarios registrados");
+                salida.println("3. Mensajeria");
+                salida.println("4. Eliminar mi cuenta");
+                salida.println("5. Salir");
                 salida.println("Por favor, ingresa el numero de la opcion que desees.");
                 String opcionStr = entrada.readLine();
 
@@ -74,9 +75,17 @@ public class servidor {
                             jugarAdivinaNumero(entrada, salida);
                             break;
                         case 2:
-                            manejarMensajeria(entrada, salida, usuarioLogueado);
+                            salida.println("LISTA_USUARIOS:");
+                            List<String> usuarios = listarUsuarios();
+                            for (String user : usuarios) {
+                                salida.println(user);
+                            }
+                            salida.println("FIN_LISTA:");
                             break;
                         case 3:
+                            manejarMensajeria(entrada, salida, usuarioLogueado);
+                            break;
+                        case 4:
                             salida.println("CONFIRMACION: ¿Estas seguro de que quieres eliminar tu usuario? (si/no)");
                             String confirmacion = entrada.readLine();
                             if (confirmacion != null && confirmacion.equalsIgnoreCase("si")) {
@@ -90,12 +99,12 @@ public class servidor {
                                 salida.println("OPERACION_CANCELADA: La eliminacion del usuario ha sido cancelada.");
                             }
                             break;
-                        case 4:
+                        case 5:
                             salida.println("Sesion cerrada. Adios.");
                             seguirEnSesion = false;
                             break;
                         default:
-                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 4.");
+                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 5.");
                             break;
                     }
                 } catch (NumberFormatException e) {
@@ -204,6 +213,39 @@ public class servidor {
         }
     }
 
+    // Nuevo método para listar usuarios
+    private static List<String> listarUsuarios() {
+        List<String> listaUsuarios = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(",");
+                if (partes.length >= 1) {
+                    listaUsuarios.add(partes[0].trim());
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de usuarios: " + e.getMessage());
+        }
+        return listaUsuarios;
+    }
+
+    // Método para verificar la existencia de un usuario
+    private static boolean usuarioExiste(String usuario) {
+        try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(",");
+                if (partes.length >= 1 && partes[0].trim().equals(usuario)) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de usuarios: " + e.getMessage());
+        }
+        return false;
+    }
+
     private static void manejarMensajeria(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
         boolean enMensajeria = true;
         while (enMensajeria) {
@@ -226,13 +268,17 @@ public class servidor {
                     case 1:
                         salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
                         String destinatario = entrada.readLine();
-                        salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
-                        String contenido = entrada.readLine();
-                        if (destinatario != null && contenido != null) {
-                            guardarMensaje(usuarioLogueado, destinatario, contenido);
-                            salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                        if (destinatario != null && usuarioExiste(destinatario)) { // Validación de existencia
+                            salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
+                            String contenido = entrada.readLine();
+                            if (contenido != null) {
+                                guardarMensaje(usuarioLogueado, destinatario, contenido);
+                                salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                            } else {
+                                salida.println("ERROR: No se recibió el contenido del mensaje.");
+                            }
                         } else {
-                            salida.println("ERROR: Datos no validos.");
+                            salida.println("ERROR: El usuario '" + destinatario + "' no está registrado.");
                         }
                         break;
                     case 2:
