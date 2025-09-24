@@ -130,6 +130,7 @@ public class cliente {
             while (!(usuario = entrada.readLine()).equals("FIN_LISTA:")) {
                 System.out.println("- " + usuario);
             }
+            System.out.println("----------------------------\n");
         } else {
             System.out.println("Servidor: " + respuesta);
         }

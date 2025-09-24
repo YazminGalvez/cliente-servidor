@@ -213,7 +213,6 @@ public class servidor {
         }
     }
 
-    // Nuevo método para listar usuarios
     private static List<String> listarUsuarios() {
         List<String> listaUsuarios = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
@@ -230,7 +229,6 @@ public class servidor {
         return listaUsuarios;
     }
 
-    // Método para verificar la existencia de un usuario
     private static boolean usuarioExiste(String usuario) {
         try (BufferedReader br = new BufferedReader(new FileReader(USUARIOS))) {
             String linea;
@@ -268,7 +266,7 @@ public class servidor {
                     case 1:
                         salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
                         String destinatario = entrada.readLine();
-                        if (destinatario != null && usuarioExiste(destinatario)) { // Validación de existencia
+                        if (destinatario != null && usuarioExiste(destinatario)) {
                             salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
                             String contenido = entrada.readLine();
                             if (contenido != null) {
@@ -527,6 +525,7 @@ public class servidor {
         inputFile.delete();
         return tempFile.renameTo(inputFile);
     }
+
     private static boolean eliminarLineaDeArchivo(String lineaAEliminar, String nombreArchivo) {
         File inputFile = new File(nombreArchivo);
         File tempFile = new File("temp_" + nombreArchivo);
