@@ -32,7 +32,6 @@ public class cliente {
                     System.out.print("¿Quieres registrarte con este usuario? (si/no): ");
                     String respuestaRegistro = scanner.nextLine();
                     salida.println(respuestaRegistro);
-                    // Solo esperamos la respuesta del servidor si la respuesta fue 'si'
                     if (respuestaRegistro.equalsIgnoreCase("si")) {
                         String respuestaRegistroServidor = entrada.readLine();
                         System.out.println("Servidor: " + respuestaRegistroServidor);
@@ -58,8 +57,10 @@ public class cliente {
                 if (opcion.equalsIgnoreCase("1")) {
                     jugarAdivinaNumero(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("2")) {
-                    chatearConServidor(entrada, salida, scanner);
+                    manejarListaUsuarios(entrada);
                 } else if (opcion.equalsIgnoreCase("3")) {
+                    chatearConServidor(entrada, salida, scanner);
+                } else if (opcion.equalsIgnoreCase("4")) {
                     String confirmacion = entrada.readLine();
                     System.out.println("Servidor: " + confirmacion);
                     if (confirmacion.startsWith("CONFIRMACION")) {
@@ -72,7 +73,7 @@ public class cliente {
                             enSesion = false;
                         }
                     }
-                } else if (opcion.equalsIgnoreCase("4")) {
+                } else if (opcion.equalsIgnoreCase("5")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
@@ -121,6 +122,20 @@ public class cliente {
         }
     }
 
+    private static void manejarListaUsuarios(BufferedReader entrada) throws IOException {
+        String respuesta = entrada.readLine();
+        if (respuesta.equals("LISTA_USUARIOS:")) {
+            System.out.println("\n--- Usuarios registrados ---");
+            String usuario;
+            while (!(usuario = entrada.readLine()).equals("FIN_LISTA:")) {
+                System.out.println("- " + usuario);
+            }
+            System.out.println("----------------------------\n");
+        } else {
+            System.out.println("Servidor: " + respuesta);
+        }
+    }
+
     private static void chatearConServidor(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
         boolean enChat = true;
         while (enChat) {
@@ -138,15 +153,21 @@ public class cliente {
                 case "1":
                     String respuesta = entrada.readLine();
                     System.out.println("Servidor: " + respuesta);
-                    System.out.print("Destinatario: ");
-                    String destinatario = scanner.nextLine();
-                    salida.println(destinatario);
-                    String respuesta2 = entrada.readLine();
-                    System.out.println("Servidor: " + respuesta2);
-                    System.out.print("Mensaje: ");
-                    String contenido = scanner.nextLine();
-                    salida.println(contenido);
-                    System.out.println(entrada.readLine());
+                    if (respuesta.startsWith("MENSAJE_DESTINATARIO")) {
+                        System.out.print("Destinatario: ");
+                        String destinatario = scanner.nextLine();
+                        salida.println(destinatario);
+
+                        String respuesta2 = entrada.readLine();
+                        System.out.println("Servidor: " + respuesta2);
+
+                        if (respuesta2.startsWith("MENSAJE_CONTENIDO")) {
+                            System.out.print("Mensaje: ");
+                            String contenido = scanner.nextLine();
+                            salida.println(contenido);
+                            System.out.println("Servidor: " + entrada.readLine());
+                        }
+                    }
                     break;
                 case "2":
                     manejarLecturaPaginada(entrada, salida, scanner);
