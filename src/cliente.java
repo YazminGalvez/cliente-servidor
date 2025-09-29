@@ -69,11 +69,13 @@ public class cliente {
                         salida.println(respuestaConfirmacion);
                         String respuestaServidor = entrada.readLine();
                         System.out.println("Servidor: " + respuestaServidor);
-                        if (respuestaConfirmacion.equalsIgnoreCase("si")) {
+                        if (respuestaConfirmacion.equalsIgnoreCase("si") && respuestaServidor.startsWith("USUARIO_ELIMINADO")) {
                             enSesion = false;
                         }
                     }
                 } else if (opcion.equalsIgnoreCase("5")) {
+                    manejarBloqueo(entrada, salida, scanner);
+                } else if (opcion.equalsIgnoreCase("6")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
@@ -266,6 +268,79 @@ public class cliente {
                 System.out.println("Servidor: " + estadoPaginacion);
                 enPaginacion = false;
             }
+        }
+    }
+
+    private static void manejarBloqueo(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        boolean enBloqueoMenu = true;
+        while (enBloqueoMenu) {
+            String bloqueoMenuPrompt;
+            while ((bloqueoMenuPrompt = entrada.readLine()) != null && !bloqueoMenuPrompt.startsWith("Por favor")) {
+                System.out.println(bloqueoMenuPrompt);
+            }
+            System.out.println(bloqueoMenuPrompt);
+
+            System.out.print("Tu eleccion: ");
+            String opcion = scanner.nextLine();
+            salida.println(opcion);
+
+            String respuestaServidor = "";
+            switch (opcion) {
+                case "1":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    if (respuestaServidor.startsWith("BLOQUEO_USUARIO")) {
+                        System.out.print("Usuario a bloquear: ");
+                        String aBloquear = scanner.nextLine();
+                        salida.println(aBloquear);
+                        respuestaServidor = entrada.readLine();
+                        System.out.println("Servidor: " + respuestaServidor);
+                    }
+                    break;
+                case "2":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    if (respuestaServidor.startsWith("DESBLOQUEO_USUARIO")) {
+                        System.out.print("Usuario a desbloquear: ");
+                        String aDesbloquear = scanner.nextLine();
+                        salida.println(aDesbloquear);
+                        respuestaServidor = entrada.readLine();
+                        System.out.println("Servidor: " + respuestaServidor);
+                    }
+                    break;
+                case "3":
+                    manejarListaBloqueados(entrada);
+                    break;
+                case "4":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    if (respuestaServidor.startsWith("BLOQUEO_SALIDA")) {
+                        enBloqueoMenu = false;
+                    }
+                    break;
+                default:
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    break;
+            }
+        }
+    }
+
+    private static void manejarListaBloqueados(BufferedReader entrada) throws IOException {
+        String respuesta = entrada.readLine();
+        if (respuesta.equals("LISTA_BLOQUEADOS:")) {
+            System.out.println("\n--- Usuarios bloqueados ---");
+            String usuario;
+            while (!(usuario = entrada.readLine()).equals("FIN_LISTA_BLOQUEADOS:")) {
+                if (usuario.startsWith("INFO:")) {
+                    System.out.println(usuario.substring(6));
+                    break;
+                }
+                System.out.println(usuario);
+            }
+            System.out.println("---------------------------\n");
+        } else {
+            System.out.println("Servidor: " + respuesta);
         }
     }
 }

@@ -3,10 +3,12 @@ import java.net.*;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class servidor {
     private static final String USUARIOS = "usuarios.txt";
     private static final String MENSAJES = "mensajes.txt";
+    private static final String BLOQUEADOS = "bloqueados.txt";
     private static final String SEPARADOR = "::";
 
     public static void main(String[] args) {
@@ -59,7 +61,8 @@ public class servidor {
                 salida.println("2. Ver usuarios registrados");
                 salida.println("3. Mensajeria");
                 salida.println("4. Eliminar mi cuenta");
-                salida.println("5. Salir");
+                salida.println("5. Bloquear/Desbloquear Usuario");
+                salida.println("6. Salir");
                 salida.println("Por favor, ingresa el numero de la opcion que desees.");
                 String opcionStr = entrada.readLine();
 
@@ -100,11 +103,14 @@ public class servidor {
                             }
                             break;
                         case 5:
+                            manejarBloqueoUsuarios(entrada, salida, usuarioLogueado);
+                            break;
+                        case 6:
                             salida.println("Sesion cerrada. Adios.");
                             seguirEnSesion = false;
                             break;
                         default:
-                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 5.");
+                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 6.");
                             break;
                     }
                 } catch (NumberFormatException e) {
@@ -266,17 +272,23 @@ public class servidor {
                     case 1:
                         salida.println("MENSAJE_DESTINATARIO: Ingresa el usuario destinatario.");
                         String destinatario = entrada.readLine();
-                        if (destinatario != null && usuarioExiste(destinatario)) {
-                            salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
-                            String contenido = entrada.readLine();
-                            if (contenido != null) {
-                                guardarMensaje(usuarioLogueado, destinatario, contenido);
-                                salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                        if (destinatario != null) {
+                            if (usuarioExiste(destinatario)) {
+                                if (estaBloqueadoPor(usuarioLogueado, destinatario)) {
+                                    salida.println("ERROR: No puedes enviar mensajes a este usuario. Te ha bloqueado.");
+                                } else {
+                                    salida.println("MENSAJE_CONTENIDO: Ingresa tu mensaje.");
+                                    String contenido = entrada.readLine();
+                                    if (contenido != null) {
+                                        guardarMensaje(usuarioLogueado, destinatario, contenido);
+                                        salida.println("MENSAJE_ENVIADO: Mensaje enviado exitosamente.");
+                                    } else {
+                                        salida.println("ERROR: No se recibió el contenido del mensaje.");
+                                    }
+                                }
                             } else {
-                                salida.println("ERROR: No se recibió el contenido del mensaje.");
+                                salida.println("ERROR: El usuario '" + destinatario + "' no está registrado.");
                             }
-                        } else {
-                            salida.println("ERROR: El usuario '" + destinatario + "' no está registrado.");
                         }
                         break;
                     case 2:
@@ -465,7 +477,7 @@ public class servidor {
     }
 
     private static boolean eliminarUsuario(String usuario) {
-        if (eliminarUsuarioDeArchivo(usuario) && eliminarMensajesDeUsuario(usuario)) {
+        if (eliminarUsuarioDeArchivo(usuario) && eliminarMensajesDeUsuario(usuario) && eliminarBloqueosRelacionados(usuario)) {
             return true;
         }
         return false;
@@ -553,5 +565,184 @@ public class servidor {
             tempFile.delete();
             return false;
         }
+    }
+
+    private static boolean estaBloqueadoPor(String remitente, String destinatario) {
+        try (BufferedReader br = new BufferedReader(new FileReader(BLOQUEADOS))) {
+            String linea;
+            String lineaBusqueda = destinatario + SEPARADOR + remitente;
+            while ((linea = br.readLine()) != null) {
+                if (linea.equals(lineaBusqueda)) {
+                    return true;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            return false;
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de bloqueos: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private static boolean usuarioBloqueoAUsuario(String usuarioA, String usuarioB) {
+        try (BufferedReader br = new BufferedReader(new FileReader(BLOQUEADOS))) {
+            String linea;
+            String lineaBusqueda = usuarioA + SEPARADOR + usuarioB;
+            while ((linea = br.readLine()) != null) {
+                if (linea.equals(lineaBusqueda)) {
+                    return true;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            return false;
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de bloqueos: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private static boolean bloquearUsuario(String usuarioA, String usuarioB) {
+        if (usuarioA.equals(usuarioB)) return false;
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(BLOQUEADOS, true))) {
+            bw.write(usuarioA + SEPARADOR + usuarioB);
+            bw.newLine();
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al bloquear usuario: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean desbloquearUsuario(String usuarioA, String usuarioB) {
+        String lineaAEliminar = usuarioA + SEPARADOR + usuarioB;
+        return eliminarLineaDeArchivo(lineaAEliminar, BLOQUEADOS);
+    }
+
+    private static boolean eliminarBloqueosRelacionados(String usuarioAEliminar) {
+        File inputFile = new File(BLOQUEADOS);
+        if (!inputFile.exists()) return true;
+
+        File tempFile = new File("temp_" + BLOQUEADOS);
+        boolean bloqueosEncontrados = false;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+
+            String lineaActual;
+            while ((lineaActual = reader.readLine()) != null) {
+                String[] partes = lineaActual.split(SEPARADOR);
+                if (partes.length == 2 && (partes[0].equals(usuarioAEliminar) || partes[1].equals(usuarioAEliminar))) {
+                    bloqueosEncontrados = true;
+                    continue;
+                }
+                writer.write(lineaActual);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        inputFile.delete();
+        return tempFile.renameTo(inputFile);
+    }
+
+    private static void manejarBloqueoUsuarios(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        boolean enBloqueoMenu = true;
+        while (enBloqueoMenu) {
+            salida.println("BLOQUEO_MENU:");
+            salida.println("1. Bloquear usuario");
+            salida.println("2. Desbloquear usuario");
+            salida.println("3. Ver usuarios bloqueados");
+            salida.println("4. Volver al menu principal");
+            salida.println("Por favor, ingresa el numero de la opcion que desees.");
+
+            String opcionStr = entrada.readLine();
+            if (opcionStr == null) {
+                enBloqueoMenu = false;
+                continue;
+            }
+
+            try {
+                int opcion = Integer.parseInt(opcionStr);
+                switch (opcion) {
+                    case 1:
+                        salida.println("BLOQUEO_USUARIO: Ingresa el usuario a bloquear.");
+                        String aBloquear = entrada.readLine();
+                        if (aBloquear == null) break;
+
+                        if (aBloquear.equals(usuarioLogueado)) {
+                            salida.println("ERROR: No puedes bloquearte a ti mismo.");
+                        } else if (!usuarioExiste(aBloquear)) {
+                            salida.println("ERROR: El usuario '" + aBloquear + "' no existe.");
+                        } else if (usuarioBloqueoAUsuario(usuarioLogueado, aBloquear)) {
+                            salida.println("INFO: Ya bloqueaste a '" + aBloquear + "'.");
+                        } else if (bloquearUsuario(usuarioLogueado, aBloquear)) {
+                            salida.println("BLOQUEO_EXITOSO: Has bloqueado a '" + aBloquear + "'.");
+                        } else {
+                            salida.println("ERROR: No se pudo bloquear a '" + aBloquear + "'.");
+                        }
+                        break;
+                    case 2:
+                        salida.println("DESBLOQUEO_USUARIO: Ingresa el usuario a desbloquear.");
+                        String aDesbloquear = entrada.readLine();
+                        if (aDesbloquear == null) break;
+
+                        if (aDesbloquear.equals(usuarioLogueado)) {
+                            salida.println("ERROR: No puedes desbloquearte a ti mismo (no tiene sentido).");
+                        } else if (!usuarioExiste(aDesbloquear)) {
+                            salida.println("ERROR: El usuario '" + aDesbloquear + "' no existe.");
+                        } else if (!usuarioBloqueoAUsuario(usuarioLogueado, aDesbloquear)) {
+                            salida.println("INFO: No tienes bloqueado a '" + aDesbloquear + "'.");
+                        } else if (desbloquearUsuario(usuarioLogueado, aDesbloquear)) {
+                            salida.println("DESBLOQUEO_EXITOSO: Has desbloqueado a '" + aDesbloquear + "'.");
+                        } else {
+                            salida.println("ERROR: No se pudo desbloquear a '" + aDesbloquear + "'.");
+                        }
+                        break;
+                    case 3:
+                        verUsuariosBloqueados(salida, usuarioLogueado);
+                        break;
+                    case 4:
+                        salida.println("BLOQUEO_SALIDA: Volviendo al menu principal.");
+                        enBloqueoMenu = false;
+                        break;
+                    default:
+                        salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 4.");
+                        break;
+                }
+            } catch (NumberFormatException e) {
+                salida.println("ERROR: Ingresa un numero valido para la opcion.");
+            }
+        }
+    }
+
+    private static void verUsuariosBloqueados(PrintWriter salida, String usuarioLogueado) {
+        List<String> bloqueados = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(BLOQUEADOS))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(SEPARADOR);
+                if (partes.length == 2 && partes[0].equals(usuarioLogueado)) {
+                    bloqueados.add(partes[1]);
+                }
+            }
+        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de bloqueos: " + e.getMessage());
+            salida.println("ERROR: Error al leer la lista de bloqueos.");
+            return;
+        }
+
+        salida.println("LISTA_BLOQUEADOS:");
+        if (bloqueados.isEmpty()) {
+            salida.println("INFO: No tienes usuarios bloqueados.");
+        } else {
+            for (String bloqueado : bloqueados) {
+                salida.println("- " + bloqueado);
+            }
+        }
+        salida.println("FIN_LISTA_BLOQUEADOS:");
     }
 }
