@@ -604,6 +604,10 @@ public class servidor {
     private static boolean bloquearUsuario(String usuarioA, String usuarioB) {
         if (usuarioA.equals(usuarioB)) return false;
 
+        if (usuarioBloqueoAUsuario(usuarioA, usuarioB)) {
+            return true;
+        }
+
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(BLOQUEADOS, true))) {
             bw.write(usuarioA + SEPARADOR + usuarioB);
             bw.newLine();
