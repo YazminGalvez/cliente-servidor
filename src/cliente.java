@@ -3,6 +3,9 @@ import java.net.*;
 import java.util.Scanner;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class cliente {
     public static void main(String[] args) {
@@ -13,6 +16,8 @@ public class cliente {
             BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
             Scanner scanner = new Scanner(System.in);
+
+            String usuarioLogueado = "";
 
             while (true) {
                 System.out.print("Ingresa tu usuario: ");
@@ -27,6 +32,7 @@ public class cliente {
                 System.out.println("Servidor: " + respuesta);
 
                 if (respuesta.equals("LOGIN_EXITOSO")) {
+                    usuarioLogueado = usuario;
                     break;
                 } else if (respuesta.startsWith("USUARIO_NO_EXISTE")) {
                     System.out.print("¿Quieres registrarte con este usuario? (si/no): ");
@@ -36,6 +42,7 @@ public class cliente {
                         String respuestaRegistroServidor = entrada.readLine();
                         System.out.println("Servidor: " + respuestaRegistroServidor);
                         if (respuestaRegistroServidor.equals("REGISTRO_EXITOSO")) {
+                            usuarioLogueado = usuario;
                             break;
                         }
                     }
@@ -85,7 +92,7 @@ public class cliente {
                 } else if (opcion.equalsIgnoreCase("6")) {
                     manejarArchivosCliente(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("7")) {
-                    manejarListarArchivosOtrosUsuariosCliente(entrada, salida, scanner);
+                    manejarListarArchivosOtrosUsuariosCliente(entrada, salida, scanner, usuarioLogueado);
                 } else if (opcion.equalsIgnoreCase("8")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
@@ -151,6 +158,16 @@ public class cliente {
             return;
         }
 
+        if (respuestaServidor.startsWith("GESTION_ARCHIVO_EXISTE")) {
+            System.out.print("Tu eleccion (E/C): ");
+            String accion = scanner.nextLine();
+            salida.println(accion);
+            String confirmacion = entrada.readLine();
+            System.out.println("Servidor: " + confirmacion);
+            if (confirmacion.startsWith("OPERACION_CANCELADA")) return;
+        }
+
+
         String promptContenido = entrada.readLine();
         System.out.println("Servidor: " + promptContenido);
 
@@ -174,12 +191,13 @@ public class cliente {
             String archivo;
             while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS:")) {
                 if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
-                    System.out.println(archivo.substring(6));
+                    System.out.println(archivo.substring(5));
                     break;
                 }
                 System.out.println(archivo);
             }
             System.out.println("------------------------------\n");
+
         } else {
             System.out.println("Servidor: " + respuesta);
         }
@@ -428,7 +446,7 @@ public class cliente {
             String usuario;
             while (!(usuario = entrada.readLine()).equals("FIN_LISTA_BLOQUEADOS:")) {
                 if (usuario.startsWith("INFO:")) {
-                    System.out.println(usuario.substring(6));
+                    System.out.println(usuario.substring(5));
                     break;
                 }
                 System.out.println(usuario);
@@ -471,7 +489,7 @@ public class cliente {
         }
     }
 
-    private static void manejarListarArchivosOtrosUsuariosCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+    private static void manejarListarArchivosOtrosUsuariosCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner, String usuarioLogueado) throws IOException {
         boolean enCompartirMenu = true;
         while (enCompartirMenu) {
             String compartirMenuPrompt;
@@ -512,7 +530,7 @@ public class cliente {
                             String archivo;
                             while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS_AUTORIZADOS:")) {
                                 if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
-                                    System.out.println(archivo.substring(6));
+                                    System.out.println(archivo.substring(5));
                                     break;
                                 }
                                 System.out.println(archivo);
@@ -522,6 +540,9 @@ public class cliente {
                     }
                     break;
                 case "3":
+                    manejarDescargaAutorizadaCliente(entrada, salida, scanner, usuarioLogueado);
+                    break;
+                case "4":
                     respuestaServidor = entrada.readLine();
                     System.out.println("Servidor: " + respuestaServidor);
                     enCompartirMenu = false;
@@ -530,6 +551,67 @@ public class cliente {
                     respuestaServidor = entrada.readLine();
                     System.out.println("Servidor: " + respuestaServidor);
                     break;
+            }
+        }
+    }
+
+    private static void manejarDescargaAutorizadaCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner, String usuarioLogueado) throws IOException {
+        String respuestaServidor = entrada.readLine();
+        System.out.println("Servidor: " + respuestaServidor);
+
+        if (!respuestaServidor.startsWith("DESCARGA_USUARIO")) return;
+
+        System.out.print("Usuario propietario del archivo: ");
+        String propietario = scanner.nextLine();
+        salida.println(propietario);
+
+        respuestaServidor = entrada.readLine();
+        System.out.println("Servidor: " + respuestaServidor);
+
+        if (respuestaServidor.startsWith("ERROR")) return;
+
+        if (!respuestaServidor.startsWith("DESCARGA_NOMBRE_ARCHIVO")) return;
+
+        System.out.print("Nombre del archivo a descargar: ");
+        String nombreArchivo = scanner.nextLine();
+        salida.println(nombreArchivo);
+
+        String respuestaInicial = entrada.readLine();
+        System.out.println("Servidor: " + respuestaInicial);
+
+        if (respuestaInicial.startsWith("ERROR")) return;
+
+        if (respuestaInicial.startsWith("DESCARGA_INICIO")) {
+            String[] partes = respuestaInicial.split(":");
+            String nombreDescarga = partes.length > 1 ? partes[1] : nombreArchivo;
+
+            Path directorioDescargasRaiz = Paths.get("archivos_descargados");
+            Path directorioDescargasUsuario = directorioDescargasRaiz.resolve(usuarioLogueado);
+
+            Files.createDirectories(directorioDescargasUsuario);
+
+            Path rutaGuardar = directorioDescargasUsuario.resolve(nombreDescarga);
+
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(rutaGuardar.toFile(), false))) {
+                String linea;
+                while (!(linea = entrada.readLine()).equals("FIN_ARCHIVO_DESCARGADO")) {
+                    bw.write(linea);
+                    bw.newLine();
+                }
+                bw.flush();
+
+                System.out.println("\n--- DESCARGA EXITOSA ---");
+                System.out.println("El archivo '" + nombreDescarga + "' ha sido guardado exitosamente.");
+                System.out.println("------------------------\n");
+
+                respuestaServidor = entrada.readLine();
+                System.out.println("Servidor: " + respuestaServidor);
+
+            } catch (IOException e) {
+                System.err.println("Error al guardar el archivo en el cliente: " + e.getMessage());
+                if (entrada.ready()) {
+                    entrada.readLine();
+                }
             }
         }
     }

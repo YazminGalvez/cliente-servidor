@@ -13,6 +13,7 @@ public class servidor {
     private static final String MENSAJES = "mensajes.txt";
     private static final String BLOQUEADOS = "bloqueados.txt";
     private static final String DIRECTORIO_RAIZ_ARCHIVOS = "archivos_usuarios";
+    private static final String DIRECTORIO_RAIZ_DESCARGAS = "archivos_descargados";
     private static final String SEPARADOR = "::";
     private static final String PERMISOS = "permisos.txt";
     private static final String SOLICITUDES_PENDIENTES = "solicitudes_pendientes.txt";
@@ -71,7 +72,7 @@ public class servidor {
                 salida.println("4. Eliminar mi cuenta");
                 salida.println("5. Bloquear/Desbloquear Usuario");
                 salida.println("6. Gestion de Archivos");
-                salida.println("7. Listar archivos de otro usuario");
+                salida.println("7. Listar/Descargar archivos de otro usuario");
                 salida.println("8. Salir");
                 salida.println("Por favor, ingresa el numero de la opcion que desees.");
                 String opcionStr = entrada.readLine();
@@ -174,10 +175,11 @@ public class servidor {
             bw.write(usuario + "," + contrasena);
             bw.newLine();
 
-            if (crearDirectorioUsuario(usuario)) {
+            if (crearDirectorioUsuario(usuario, DIRECTORIO_RAIZ_ARCHIVOS) &&
+                    crearDirectorioUsuario(usuario, DIRECTORIO_RAIZ_DESCARGAS)) {
                 return true;
             } else {
-                System.err.println("Advertencia: Usuario registrado, pero no se pudo crear la carpeta para: " + usuario);
+                System.err.println("Advertencia: Usuario registrado, pero no se pudo crear una de las carpetas para: " + usuario);
                 return true;
             }
         } catch (IOException e) {
@@ -186,14 +188,14 @@ public class servidor {
         }
     }
 
-    private static boolean crearDirectorioUsuario(String usuario) {
+    private static boolean crearDirectorioUsuario(String usuario, String directorioRaiz) {
         try {
-            Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+            Path pathUsuario = Paths.get(directorioRaiz, usuario);
             Files.createDirectories(pathUsuario);
-            System.out.println("Directorio creado para el usuario: " + pathUsuario.toAbsolutePath());
+            System.out.println("Directorio creado para el usuario en " + directorioRaiz + ": " + pathUsuario.toAbsolutePath());
             return true;
         } catch (IOException e) {
-            System.err.println("Error al crear el directorio para el usuario " + usuario + ": " + e.getMessage());
+            System.err.println("Error al crear el directorio en " + directorioRaiz + " para el usuario " + usuario + ": " + e.getMessage());
             return false;
         }
     }
@@ -624,19 +626,24 @@ public class servidor {
     }
 
     private static boolean eliminarDirectorioUsuario(String usuario) {
+        boolean exitoArchivos = eliminarDirectorioEnRuta(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+        boolean exitoDescargas = eliminarDirectorioEnRuta(DIRECTORIO_RAIZ_DESCARGAS, usuario);
+        return exitoArchivos && exitoDescargas;
+    }
+
+    private static boolean eliminarDirectorioEnRuta(String directorioRaiz, String usuario) {
         try {
-            Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+            Path pathUsuario = Paths.get(directorioRaiz, usuario);
             if (Files.exists(pathUsuario)) {
                 Files.walk(pathUsuario)
                         .sorted(java.util.Comparator.reverseOrder())
                         .map(Path::toFile)
                         .forEach(File::delete);
-                System.out.println("Directorio del usuario eliminado: " + pathUsuario.toAbsolutePath());
-                return true;
+                System.out.println("Directorio del usuario eliminado en " + directorioRaiz + ": " + pathUsuario.toAbsolutePath());
             }
             return true;
         } catch (IOException e) {
-            System.err.println("Error al eliminar el directorio del usuario " + usuario + ": " + e.getMessage());
+            System.err.println("Error al eliminar el directorio del usuario " + usuario + " en " + directorioRaiz + ": " + e.getMessage());
             return false;
         }
     }
@@ -909,34 +916,94 @@ public class servidor {
     }
 
     private static void manejarListarArchivosOtrosUsuarios(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
-        salida.println("COMPARTIR_MENU:");
-        salida.println("1. Solicitar ver archivos de otro usuario");
-        salida.println("2. Ver archivos de usuario autorizado");
-        salida.println("3. Volver al menu principal");
-        salida.println("Por favor, ingresa el numero de la opcion que desees.");
+        boolean enCompartirMenu = true;
+        while (enCompartirMenu) {
+            salida.println("COMPARTIR_MENU:");
+            salida.println("1. Solicitar ver archivos de otro usuario");
+            salida.println("2. Ver archivos de usuario autorizado");
+            salida.println("3. Descargar archivo de usuario autorizado");
+            salida.println("4. Volver al menu principal");
+            salida.println("Por favor, ingresa el numero de la opcion que desees.");
 
-        String opcionStr = entrada.readLine();
-        if (opcionStr == null) return;
-
-        try {
-            int opcion = Integer.parseInt(opcionStr);
-            switch (opcion) {
-                case 1:
-                    solicitarVerArchivos(entrada, salida, usuarioLogueado);
-                    break;
-                case 2:
-                    verArchivosAutorizados(entrada, salida, usuarioLogueado);
-                    break;
-                case 3:
-                    salida.println("COMPARTIR_SALIDA: Volviendo al menu principal.");
-                    break;
-                default:
-                    salida.println("OPCION_INVALIDA: Opcion no valida.");
+            String opcionStr = entrada.readLine();
+            if (opcionStr == null) {
+                enCompartirMenu = false;
+                continue;
             }
-        } catch (NumberFormatException e) {
-            salida.println("ERROR: Ingresa un numero valido.");
+
+            try {
+                int opcion = Integer.parseInt(opcionStr);
+                switch (opcion) {
+                    case 1:
+                        solicitarVerArchivos(entrada, salida, usuarioLogueado);
+                        break;
+                    case 2:
+                        verArchivosAutorizados(entrada, salida, usuarioLogueado);
+                        break;
+                    case 3:
+                        manejarDescargaAutorizada(entrada, salida, usuarioLogueado);
+                        break;
+                    case 4:
+                        salida.println("COMPARTIR_SALIDA: Volviendo al menu principal.");
+                        enCompartirMenu = false;
+                        break;
+                    default:
+                        salida.println("OPCION_INVALIDA: Opcion no valida.");
+                }
+            } catch (NumberFormatException e) {
+                salida.println("ERROR: Ingresa un numero valido.");
+            }
         }
     }
+
+    private static void manejarDescargaAutorizada(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        salida.println("DESCARGA_USUARIO: Ingresa el usuario propietario del archivo.");
+        String propietario = entrada.readLine();
+        if (propietario == null) return;
+
+        if (!usuarioExiste(propietario)) {
+            salida.println("ERROR: El usuario '" + propietario + "' no existe.");
+            return;
+        }
+
+        if (usuarioLogueado.equals(propietario)) {
+            salida.println("ERROR: Usa la opcion 6 para gestionar tus propios archivos.");
+            return;
+        }
+
+        if (!tienePermiso(propietario, usuarioLogueado)) {
+            salida.println("ERROR: No tienes permiso para descargar archivos de '" + propietario + "'. Debes solicitarlo primero (Opcion 1).");
+            return;
+        }
+
+        salida.println("DESCARGA_NOMBRE_ARCHIVO: Ingresa el nombre del archivo a descargar (ej. mi_documento.txt).");
+        String nombreArchivo = entrada.readLine();
+        if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+            salida.println("ERROR: Nombre de archivo no valido.");
+            return;
+        }
+
+        Path pathArchivo = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, propietario, nombreArchivo.trim());
+
+        if (!Files.exists(pathArchivo) || !Files.isRegularFile(pathArchivo)) {
+            salida.println("ERROR: El archivo '" + nombreArchivo + "' no existe o no es un archivo valido en la carpeta de '" + propietario + "'.");
+            return;
+        }
+
+        try {
+            List<String> lineas = Files.readAllLines(pathArchivo);
+            salida.println("DESCARGA_INICIO:" + nombreArchivo.trim());
+            for (String linea : lineas) {
+                salida.println(linea);
+            }
+            salida.println("FIN_ARCHIVO_DESCARGADO");
+            salida.println("DESCARGA_EXITOSA: Archivo '" + nombreArchivo + "' de '" + propietario + "' enviado para su descarga.");
+        } catch (IOException e) {
+            System.err.println("Error al leer/enviar archivo para descarga: " + e.getMessage());
+            salida.println("ERROR: Error del servidor al leer el archivo.");
+        }
+    }
+
 
     private static void solicitarVerArchivos(BufferedReader entrada, PrintWriter salida, String remitente) throws IOException {
         salida.println("SOLICITAR_USUARIO: Ingresa el usuario a quien le pides permiso.");
