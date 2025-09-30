@@ -66,7 +66,8 @@ public class servidor {
                 salida.println("3. Mensajeria");
                 salida.println("4. Eliminar mi cuenta");
                 salida.println("5. Bloquear/Desbloquear Usuario");
-                salida.println("6. Salir");
+                salida.println("6. Gestion de Archivos");
+                salida.println("7. Salir");
                 salida.println("Por favor, ingresa el numero de la opcion que desees.");
                 String opcionStr = entrada.readLine();
 
@@ -110,11 +111,14 @@ public class servidor {
                             manejarBloqueoUsuarios(entrada, salida, usuarioLogueado);
                             break;
                         case 6:
+                            manejarArchivos(entrada, salida, usuarioLogueado);
+                            break;
+                        case 7:
                             salida.println("Sesion cerrada. Adios.");
                             seguirEnSesion = false;
                             break;
                         default:
-                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 6.");
+                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 7.");
                             break;
                     }
                 } catch (NumberFormatException e) {
@@ -184,6 +188,113 @@ public class servidor {
             System.err.println("Error al crear el directorio para el usuario " + usuario + ": " + e.getMessage());
             return false;
         }
+    }
+
+    private static void manejarArchivos(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        boolean enArchivosMenu = true;
+        while (enArchivosMenu) {
+            salida.println("ARCHIVOS_MENU:");
+            salida.println("1. Crear/Editar archivo de texto");
+            salida.println("2. Listar mis archivos");
+            salida.println("3. Volver al menu principal");
+            salida.println("Por favor, ingresa el numero de la opcion que desees.");
+
+            String opcionStr = entrada.readLine();
+            if (opcionStr == null) {
+                enArchivosMenu = false;
+                continue;
+            }
+
+            try {
+                int opcion = Integer.parseInt(opcionStr);
+                switch (opcion) {
+                    case 1:
+                        gestionarArchivoDeTexto(entrada, salida, usuarioLogueado);
+                        break;
+                    case 2:
+                        listarArchivosUsuario(salida, usuarioLogueado);
+                        break;
+                    case 3:
+                        salida.println("ARCHIVOS_SALIDA: Volviendo al menu principal.");
+                        enArchivosMenu = false;
+                        break;
+                    default:
+                        salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 3.");
+                        break;
+                }
+            } catch (NumberFormatException e) {
+                salida.println("ERROR: Ingresa un numero valido para la opcion.");
+            }
+        }
+    }
+
+    private static void gestionarArchivoDeTexto(BufferedReader entrada, PrintWriter salida, String usuario) throws IOException {
+        salida.println("GESTION_ARCHIVO_NOMBRE: Ingresa el nombre del archivo (ej. mi_documento.txt).");
+        String nombreArchivo = entrada.readLine();
+
+        if (nombreArchivo == null || nombreArchivo.trim().isEmpty() || !nombreArchivo.toLowerCase().endsWith(".txt")) {
+            salida.println("ERROR: Nombre de archivo no valido o no termina en .txt.");
+            return;
+        }
+
+        Path pathArchivo = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario, nombreArchivo.trim());
+
+        if (Files.exists(pathArchivo)) {
+            salida.println("GESTION_ARCHIVO_EXISTE: El archivo existe. ¿Quieres (E)ditar o (C)ancelar?");
+            String accion = entrada.readLine();
+            if (accion == null || !accion.trim().equalsIgnoreCase("E")) {
+                salida.println("OPERACION_CANCELADA: Operacion cancelada por el usuario.");
+                return;
+            }
+        } else {
+            salida.println("GESTION_ARCHIVO_NUEVO: Archivo nuevo. Enviando solicitud de contenido.");
+        }
+
+        salida.println("GESTION_ARCHIVO_CONTENIDO: Ingresa el contenido (escribe 'FIN_ARCHIVO' en una nueva linea para terminar).");
+
+        StringBuilder contenido = new StringBuilder();
+        String linea;
+        while (!(linea = entrada.readLine()).equals("FIN_ARCHIVO")) {
+            contenido.append(linea).append(System.lineSeparator());
+        }
+
+        try {
+            Files.write(pathArchivo, contenido.toString().getBytes());
+            salida.println("GESTION_ARCHIVO_EXITO: Archivo '" + nombreArchivo + "' guardado/editado exitosamente en tu carpeta.");
+        } catch (IOException e) {
+            System.err.println("Error al guardar archivo de usuario: " + e.getMessage());
+            salida.println("ERROR: No se pudo guardar el archivo en el servidor.");
+        }
+    }
+
+    private static void listarArchivosUsuario(PrintWriter salida, String usuario) {
+        Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+
+        if (!Files.exists(pathUsuario) || !Files.isDirectory(pathUsuario)) {
+            salida.println("ERROR: Directorio de usuario no encontrado.");
+            return;
+        }
+
+        salida.println("LISTA_ARCHIVOS:");
+        try (var stream = Files.list(pathUsuario)) {
+            List<String> archivos = stream
+                    .filter(Files::isRegularFile)
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .collect(Collectors.toList());
+
+            if (archivos.isEmpty()) {
+                salida.println("INFO: No tienes archivos en tu carpeta.");
+            } else {
+                for (String archivo : archivos) {
+                    salida.println("- " + archivo);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error al listar archivos: " + e.getMessage());
+            salida.println("ERROR: No se pudo listar los archivos.");
+        }
+        salida.println("FIN_LISTA_ARCHIVOS:");
     }
 
     private static void jugarAdivinaNumero(BufferedReader entrada, PrintWriter salida) throws IOException {

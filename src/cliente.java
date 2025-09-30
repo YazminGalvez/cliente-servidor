@@ -76,6 +76,8 @@ public class cliente {
                 } else if (opcion.equalsIgnoreCase("5")) {
                     manejarBloqueo(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("6")) {
+                    manejarArchivosCliente(entrada, salida, scanner);
+                } else if (opcion.equalsIgnoreCase("7")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
@@ -87,6 +89,90 @@ public class cliente {
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void manejarArchivosCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        boolean enArchivosMenu = true;
+        while (enArchivosMenu) {
+            String archivosMenuPrompt;
+            while ((archivosMenuPrompt = entrada.readLine()) != null && !archivosMenuPrompt.startsWith("Por favor")) {
+                System.out.println(archivosMenuPrompt);
+            }
+            System.out.println(archivosMenuPrompt);
+
+            System.out.print("Tu eleccion: ");
+            String opcion = scanner.nextLine();
+            salida.println(opcion);
+
+            switch (opcion) {
+                case "1":
+                    gestionarArchivoDeTextoCliente(entrada, salida, scanner);
+                    break;
+                case "2":
+                    listarArchivosCliente(entrada);
+                    break;
+                case "3":
+                    String respuestaSalida = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaSalida);
+                    enArchivosMenu = false;
+                    break;
+                default:
+                    String respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    break;
+            }
+        }
+    }
+
+    private static void gestionarArchivoDeTextoCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        String promptNombre = entrada.readLine();
+        System.out.println("Servidor: " + promptNombre);
+
+        if (!promptNombre.startsWith("GESTION_ARCHIVO_NOMBRE")) return;
+
+        System.out.print("Nombre del archivo: ");
+        String nombreArchivo = scanner.nextLine();
+        salida.println(nombreArchivo);
+
+        String respuestaServidor = entrada.readLine();
+        System.out.println("Servidor: " + respuestaServidor);
+
+        if (respuestaServidor.startsWith("ERROR") || respuestaServidor.startsWith("OPERACION_CANCELADA")) {
+            return;
+        }
+
+        String promptContenido = entrada.readLine();
+        System.out.println("Servidor: " + promptContenido);
+
+        if (promptContenido.startsWith("GESTION_ARCHIVO_CONTENIDO")) {
+            System.out.println("Empieza a escribir el contenido. (Termina con 'FIN_ARCHIVO' en una línea separada):");
+            String linea;
+            while (scanner.hasNextLine() && !(linea = scanner.nextLine()).equals("FIN_ARCHIVO")) {
+                salida.println(linea);
+            }
+            salida.println("FIN_ARCHIVO");
+
+            String confirmacion = entrada.readLine();
+            System.out.println("Servidor: " + confirmacion);
+        }
+    }
+
+    private static void listarArchivosCliente(BufferedReader entrada) throws IOException {
+        String respuesta = entrada.readLine();
+        if (respuesta.equals("LISTA_ARCHIVOS:")) {
+            System.out.println("\n--- Archivos en tu carpeta ---");
+            String archivo;
+            while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS:")) {
+                if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
+                    System.out.println(archivo.substring(6));
+                    break;
+                }
+                System.out.println(archivo);
+            }
+            System.out.println("------------------------------\n");
+        } else {
+            System.out.println("Servidor: " + respuesta);
         }
     }
 
