@@ -3,12 +3,16 @@ import java.net.*;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
 public class servidor {
     private static final String USUARIOS = "usuarios.txt";
     private static final String MENSAJES = "mensajes.txt";
     private static final String BLOQUEADOS = "bloqueados.txt";
+    private static final String DIRECTORIO_RAIZ_ARCHIVOS = "archivos_usuarios";
     private static final String SEPARADOR = "::";
 
     public static void main(String[] args) {
@@ -157,9 +161,27 @@ public class servidor {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(USUARIOS, true))) {
             bw.write(usuario + "," + contrasena);
             bw.newLine();
-            return true;
+
+            if (crearDirectorioUsuario(usuario)) {
+                return true;
+            } else {
+                System.err.println("Advertencia: Usuario registrado, pero no se pudo crear la carpeta para: " + usuario);
+                return true;
+            }
         } catch (IOException e) {
             System.err.println("Error al registrar el usuario: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean crearDirectorioUsuario(String usuario) {
+        try {
+            Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+            Files.createDirectories(pathUsuario);
+            System.out.println("Directorio creado para el usuario: " + pathUsuario.toAbsolutePath());
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al crear el directorio para el usuario " + usuario + ": " + e.getMessage());
             return false;
         }
     }
@@ -324,7 +346,6 @@ public class servidor {
         List<String> mensajesDelUsuario = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(MENSAJES))) {
             String linea;
-            int contador = 1;
             while ((linea = br.readLine()) != null) {
                 String[] partes = linea.split(SEPARADOR);
                 if (partes.length >= 3 && (partes[0].equals(usuarioLogueado) || partes[1].equals(usuarioLogueado))) {
@@ -477,10 +498,28 @@ public class servidor {
     }
 
     private static boolean eliminarUsuario(String usuario) {
-        if (eliminarUsuarioDeArchivo(usuario) && eliminarMensajesDeUsuario(usuario) && eliminarBloqueosRelacionados(usuario)) {
+        if (eliminarUsuarioDeArchivo(usuario) && eliminarMensajesDeUsuario(usuario) && eliminarBloqueosRelacionados(usuario) && eliminarDirectorioUsuario(usuario)) {
             return true;
         }
         return false;
+    }
+
+    private static boolean eliminarDirectorioUsuario(String usuario) {
+        try {
+            Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, usuario);
+            if (Files.exists(pathUsuario)) {
+                Files.walk(pathUsuario)
+                        .sorted(java.util.Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+                System.out.println("Directorio del usuario eliminado: " + pathUsuario.toAbsolutePath());
+                return true;
+            }
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al eliminar el directorio del usuario " + usuario + ": " + e.getMessage());
+            return false;
+        }
     }
 
     private static boolean eliminarUsuarioDeArchivo(String usuarioAEliminar) {
