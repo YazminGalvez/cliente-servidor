@@ -29,6 +29,10 @@ public class cliente {
                 salida.println(contrasena);
 
                 String respuesta = entrada.readLine();
+                if (respuesta == null) {
+                    System.out.println("Error: Conexión cerrada inesperadamente por el servidor.");
+                    return;
+                }
                 System.out.println("Servidor: " + respuesta);
 
                 if (respuesta.equals("LOGIN_EXITOSO")) {
@@ -40,6 +44,10 @@ public class cliente {
                     salida.println(respuestaRegistro);
                     if (respuestaRegistro.equalsIgnoreCase("si")) {
                         String respuestaRegistroServidor = entrada.readLine();
+                        if (respuestaRegistroServidor == null) {
+                            System.out.println("Error: Conexión cerrada durante el registro.");
+                            return;
+                        }
                         System.out.println("Servidor: " + respuestaRegistroServidor);
                         if (respuestaRegistroServidor.equals("REGISTRO_EXITOSO")) {
                             usuarioLogueado = usuario;
@@ -50,9 +58,14 @@ public class cliente {
             }
 
             String solicitudesInfo = entrada.readLine();
-            if (solicitudesInfo != null && solicitudesInfo.startsWith("SOLICITUDES_INFO")) {
+            if (solicitudesInfo == null) {
+                System.out.println("Error: Conexión perdida después del login.");
+                return;
+            }
+
+            if (solicitudesInfo.startsWith("SOLICITUDES_INFO")) {
                 System.out.println("Servidor: " + solicitudesInfo);
-            } else if (solicitudesInfo != null && solicitudesInfo.startsWith("SOLICITUDES_PENDIENTES")) {
+            } else if (solicitudesInfo.startsWith("SOLICITUDES_PENDIENTES")) {
                 manejarSolicitudesPendientesCliente(entrada, salida, scanner, solicitudesInfo);
             }
 
@@ -62,6 +75,13 @@ public class cliente {
                 while ((linea = entrada.readLine()) != null && !linea.startsWith("Por favor")) {
                     System.out.println(linea);
                 }
+
+                if (linea == null) {
+                    System.out.println("Servidor: Conexión cerrada. Terminando sesión.");
+                    enSesion = false;
+                    continue;
+                }
+
                 System.out.println(linea);
 
                 System.out.print("Tu eleccion: ");
@@ -76,12 +96,14 @@ public class cliente {
                     chatearConServidor(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("4")) {
                     String confirmacion = entrada.readLine();
+                    if (confirmacion == null) { enSesion = false; continue; }
                     System.out.println("Servidor: " + confirmacion);
                     if (confirmacion.startsWith("CONFIRMACION")) {
                         System.out.print("Tu eleccion: ");
                         String respuestaConfirmacion = scanner.nextLine();
                         salida.println(respuestaConfirmacion);
                         String respuestaServidor = entrada.readLine();
+                        if (respuestaServidor == null) { enSesion = false; continue; }
                         System.out.println("Servidor: " + respuestaServidor);
                         if (respuestaConfirmacion.equalsIgnoreCase("si") && respuestaServidor.startsWith("USUARIO_ELIMINADO")) {
                             enSesion = false;
@@ -95,16 +117,18 @@ public class cliente {
                     manejarListarArchivosOtrosUsuariosCliente(entrada, salida, scanner, usuarioLogueado);
                 } else if (opcion.equalsIgnoreCase("8")) {
                     String respuestaSalida = entrada.readLine();
+                    if (respuestaSalida == null) { enSesion = false; continue; }
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
                 } else {
                     String respuestaInvalida = entrada.readLine();
+                    if (respuestaInvalida == null) { enSesion = false; continue; }
                     System.out.println(respuestaInvalida);
                 }
             }
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Conexión fallida o terminada: " + e.getMessage());
         }
     }
 
@@ -115,6 +139,7 @@ public class cliente {
             while ((archivosMenuPrompt = entrada.readLine()) != null && !archivosMenuPrompt.startsWith("Por favor")) {
                 System.out.println(archivosMenuPrompt);
             }
+            if (archivosMenuPrompt == null) return;
             System.out.println(archivosMenuPrompt);
 
             System.out.print("Tu eleccion: ");
@@ -130,11 +155,13 @@ public class cliente {
                     break;
                 case "3":
                     String respuestaSalida = entrada.readLine();
+                    if (respuestaSalida == null) return;
                     System.out.println("Servidor: " + respuestaSalida);
                     enArchivosMenu = false;
                     break;
                 default:
                     String respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     break;
             }
@@ -143,6 +170,7 @@ public class cliente {
 
     private static void gestionarArchivoDeTextoCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
         String promptNombre = entrada.readLine();
+        if (promptNombre == null) return;
         System.out.println("Servidor: " + promptNombre);
 
         if (!promptNombre.startsWith("GESTION_ARCHIVO_NOMBRE")) return;
@@ -152,6 +180,7 @@ public class cliente {
         salida.println(nombreArchivo);
 
         String respuestaServidor = entrada.readLine();
+        if (respuestaServidor == null) return;
         System.out.println("Servidor: " + respuestaServidor);
 
         if (respuestaServidor.startsWith("ERROR") || respuestaServidor.startsWith("OPERACION_CANCELADA")) {
@@ -163,12 +192,14 @@ public class cliente {
             String accion = scanner.nextLine();
             salida.println(accion);
             String confirmacion = entrada.readLine();
+            if (confirmacion == null) return;
             System.out.println("Servidor: " + confirmacion);
             if (confirmacion.startsWith("OPERACION_CANCELADA")) return;
         }
 
 
         String promptContenido = entrada.readLine();
+        if (promptContenido == null) return;
         System.out.println("Servidor: " + promptContenido);
 
         if (promptContenido.startsWith("GESTION_ARCHIVO_CONTENIDO")) {
@@ -180,19 +211,21 @@ public class cliente {
             salida.println("FIN_ARCHIVO");
 
             String confirmacion = entrada.readLine();
+            if (confirmacion == null) return;
             System.out.println("Servidor: " + confirmacion);
         }
     }
 
     private static void listarArchivosCliente(BufferedReader entrada) throws IOException {
         String respuesta = entrada.readLine();
+        if (respuesta == null) return;
         if (respuesta.equals("LISTA_ARCHIVOS:")) {
             System.out.println("\n--- Archivos en tu carpeta ---");
             String archivo;
-            while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS:")) {
+            while ((archivo = entrada.readLine()) != null && !archivo.equals("FIN_LISTA_ARCHIVOS:")) {
                 if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
                     System.out.println(archivo.substring(5));
-                    break;
+                    if (entrada.readLine().equals("FIN_LISTA_ARCHIVOS:")) break;
                 }
                 System.out.println(archivo);
             }
@@ -207,6 +240,7 @@ public class cliente {
         boolean seguirJugando = true;
         while (seguirJugando) {
             String mensaje = entrada.readLine();
+            if (mensaje == null) return;
             System.out.println(mensaje);
 
             if (mensaje.startsWith("JUEGO_SALIDA")) {
@@ -221,10 +255,12 @@ public class cliente {
                 salida.println(intento);
 
                 String respuesta = entrada.readLine();
+                if (respuesta == null) return;
                 System.out.println(respuesta);
 
                 if (respuesta.startsWith("¡GANASTE") || respuesta.startsWith("PERDISTE")) {
                     String pregunta = entrada.readLine();
+                    if (pregunta == null) return;
                     System.out.println(pregunta);
                     String decision = scanner.nextLine();
                     salida.println(decision);
@@ -239,10 +275,11 @@ public class cliente {
 
     private static void manejarListaUsuarios(BufferedReader entrada) throws IOException {
         String respuesta = entrada.readLine();
+        if (respuesta == null) return;
         if (respuesta.equals("LISTA_USUARIOS:")) {
             System.out.println("\n--- Usuarios registrados ---");
             String usuario;
-            while (!(usuario = entrada.readLine()).equals("FIN_LISTA:")) {
+            while ((usuario = entrada.readLine()) != null && !usuario.equals("FIN_LISTA:")) {
                 System.out.println("- " + usuario);
             }
             System.out.println("----------------------------\n");
@@ -258,15 +295,18 @@ public class cliente {
             while ((chatMenuPrompt = entrada.readLine()) != null && !chatMenuPrompt.startsWith("Por favor")) {
                 System.out.println(chatMenuPrompt);
             }
+            if (chatMenuPrompt == null) return;
             System.out.println(chatMenuPrompt);
 
             System.out.print("Tu eleccion: ");
             String opcion = scanner.nextLine();
             salida.println(opcion);
 
+            String respuesta;
             switch (opcion) {
                 case "1":
-                    String respuesta = entrada.readLine();
+                    respuesta = entrada.readLine();
+                    if (respuesta == null) return;
                     System.out.println("Servidor: " + respuesta);
                     if (respuesta.startsWith("MENSAJE_DESTINATARIO")) {
                         System.out.print("Destinatario: ");
@@ -274,13 +314,16 @@ public class cliente {
                         salida.println(destinatario);
 
                         String respuesta2 = entrada.readLine();
+                        if (respuesta2 == null) return;
                         System.out.println("Servidor: " + respuesta2);
 
                         if (respuesta2.startsWith("MENSAJE_CONTENIDO")) {
                             System.out.print("Mensaje: ");
                             String contenido = scanner.nextLine();
                             salida.println(contenido);
-                            System.out.println("Servidor: " + entrada.readLine());
+                            String confirmacion = entrada.readLine();
+                            if (confirmacion == null) return;
+                            System.out.println("Servidor: " + confirmacion);
                         }
                     }
                     break;
@@ -291,13 +334,15 @@ public class cliente {
                     manejarEliminacionPaginada(entrada, salida, scanner);
                     break;
                 case "4":
-                    String respuestaVolver = entrada.readLine();
-                    System.out.println("Servidor: " + respuestaVolver);
+                    respuesta = entrada.readLine();
+                    if (respuesta == null) return;
+                    System.out.println("Servidor: " + respuesta);
                     enChat = false;
                     break;
                 default:
-                    String respuestaServidor = entrada.readLine();
-                    System.out.println("Servidor: " + respuestaServidor);
+                    respuesta = entrada.readLine();
+                    if (respuesta == null) return;
+                    System.out.println("Servidor: " + respuesta);
                     break;
             }
         }
@@ -307,6 +352,8 @@ public class cliente {
         boolean enPaginacion = true;
         while (enPaginacion) {
             String estadoPaginacion = entrada.readLine();
+            if (estadoPaginacion == null) return;
+
             if (estadoPaginacion.startsWith("PAGINACION_INICIO")) {
                 String[] partes = estadoPaginacion.split(":");
                 int paginaActual = Integer.parseInt(partes[1]);
@@ -315,6 +362,7 @@ public class cliente {
 
                 while (true) {
                     String lineaMensaje = entrada.readLine();
+                    if (lineaMensaje == null) return;
                     if (lineaMensaje.equals("PAGINACION_FIN")) {
                         break;
                     }
@@ -322,12 +370,14 @@ public class cliente {
                 }
 
                 String opciones = entrada.readLine();
+                if (opciones == null) return;
                 System.out.println(opciones);
                 System.out.print("Tu comando: ");
                 String comando = scanner.nextLine();
                 salida.println(comando);
 
                 String respuestaServidor = entrada.readLine();
+                if (respuestaServidor == null) return;
                 System.out.println("Servidor: " + respuestaServidor);
 
                 if (respuestaServidor.startsWith("MENSAJE_SALIDA_LECTURA")) {
@@ -347,6 +397,8 @@ public class cliente {
         boolean enPaginacion = true;
         while (enPaginacion) {
             String estadoPaginacion = entrada.readLine();
+            if (estadoPaginacion == null) return;
+
             if (estadoPaginacion.startsWith("PAGINACION_INICIO")) {
                 String[] partes = estadoPaginacion.split(":");
                 int paginaActual = Integer.parseInt(partes[1]);
@@ -355,6 +407,7 @@ public class cliente {
 
                 while (true) {
                     String lineaMensaje = entrada.readLine();
+                    if (lineaMensaje == null) return;
                     if (lineaMensaje.equals("PAGINACION_FIN")) {
                         break;
                     }
@@ -362,12 +415,14 @@ public class cliente {
                 }
 
                 String opciones = entrada.readLine();
+                if (opciones == null) return;
                 System.out.println(opciones);
                 System.out.print("Tu comando: ");
                 String comando = scanner.nextLine();
                 salida.println(comando);
 
                 String respuestaServidor = entrada.readLine();
+                if (respuestaServidor == null) return;
                 System.out.println("Servidor: " + respuestaServidor);
 
                 if (respuestaServidor.startsWith("MENSAJE_SALIDA_ELIMINAR") || respuestaServidor.startsWith("MENSAJE_ELIMINADO_EXITO")) {
@@ -391,6 +446,7 @@ public class cliente {
             while ((bloqueoMenuPrompt = entrada.readLine()) != null && !bloqueoMenuPrompt.startsWith("Por favor")) {
                 System.out.println(bloqueoMenuPrompt);
             }
+            if (bloqueoMenuPrompt == null) return;
             System.out.println(bloqueoMenuPrompt);
 
             System.out.print("Tu eleccion: ");
@@ -401,23 +457,27 @@ public class cliente {
             switch (opcion) {
                 case "1":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     if (respuestaServidor.startsWith("BLOQUEO_USUARIO")) {
                         System.out.print("Usuario a bloquear: ");
                         String aBloquear = scanner.nextLine();
                         salida.println(aBloquear);
                         respuestaServidor = entrada.readLine();
+                        if (respuestaServidor == null) return;
                         System.out.println("Servidor: " + respuestaServidor);
                     }
                     break;
                 case "2":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     if (respuestaServidor.startsWith("DESBLOQUEO_USUARIO")) {
                         System.out.print("Usuario a desbloquear: ");
                         String aDesbloquear = scanner.nextLine();
                         salida.println(aDesbloquear);
                         respuestaServidor = entrada.readLine();
+                        if (respuestaServidor == null) return;
                         System.out.println("Servidor: " + respuestaServidor);
                     }
                     break;
@@ -426,6 +486,7 @@ public class cliente {
                     break;
                 case "4":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     if (respuestaServidor.startsWith("BLOQUEO_SALIDA")) {
                         enBloqueoMenu = false;
@@ -433,6 +494,7 @@ public class cliente {
                     break;
                 default:
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     break;
             }
@@ -441,10 +503,11 @@ public class cliente {
 
     private static void manejarListaBloqueados(BufferedReader entrada) throws IOException {
         String respuesta = entrada.readLine();
+        if (respuesta == null) return;
         if (respuesta.equals("LISTA_BLOQUEADOS:")) {
             System.out.println("\n--- Usuarios bloqueados ---");
             String usuario;
-            while (!(usuario = entrada.readLine()).equals("FIN_LISTA_BLOQUEADOS:")) {
+            while ((usuario = entrada.readLine()) != null && !usuario.equals("FIN_LISTA_BLOQUEADOS:")) {
                 if (usuario.startsWith("INFO:")) {
                     System.out.println(usuario.substring(5));
                     break;
@@ -462,21 +525,26 @@ public class cliente {
         boolean enManejoSolicitudes = true;
         while (enManejoSolicitudes) {
             String listaInicio = entrada.readLine();
+            if (listaInicio == null) return;
+
             if (listaInicio.startsWith("LISTA_SOLICITUDES:")) {
                 System.out.println("\n--- Solicitudes Pendientes ---");
                 String solicitud;
-                while (!(solicitud = entrada.readLine()).equals("FIN_SOLICITUDES:")) {
+                while ((solicitud = entrada.readLine()) != null && !solicitud.equals("FIN_SOLICITUDES:")) {
                     System.out.println(solicitud);
                 }
+                if (solicitud == null) return;
                 System.out.println("----------------------------");
 
                 String opciones = entrada.readLine();
+                if (opciones == null) return;
                 System.out.println("Servidor: " + opciones);
                 System.out.print("Tu comando (Ej: A1 para aprobar la solicitud 1, R2 para rechazar la 2, S para Salir): ");
                 String comando = scanner.nextLine();
                 salida.println(comando);
 
                 String respuestaServidor = entrada.readLine();
+                if (respuestaServidor == null) return;
                 System.out.println("Servidor: " + respuestaServidor);
 
                 if (respuestaServidor.startsWith("SOLICITUDES_SALIDA") || respuestaServidor.startsWith("SOLICITUDES_INFO: No te quedan")) {
@@ -496,6 +564,7 @@ public class cliente {
             while ((compartirMenuPrompt = entrada.readLine()) != null && !compartirMenuPrompt.startsWith("Por favor")) {
                 System.out.println(compartirMenuPrompt);
             }
+            if (compartirMenuPrompt == null) return;
             System.out.println(compartirMenuPrompt);
 
             System.out.print("Tu eleccion: ");
@@ -506,16 +575,20 @@ public class cliente {
             switch (opcion) {
                 case "1":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     if (respuestaServidor.startsWith("SOLICITAR_USUARIO")) {
                         System.out.print("Usuario para solicitar permiso: ");
                         String usuarioSolicitado = scanner.nextLine();
                         salida.println(usuarioSolicitado);
-                        System.out.println("Servidor: " + entrada.readLine());
+                        String confirmacion = entrada.readLine();
+                        if (confirmacion == null) return;
+                        System.out.println("Servidor: " + confirmacion);
                     }
                     break;
                 case "2":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     if (respuestaServidor.startsWith("AUTORIZADOS_USUARIO")) {
                         System.out.print("Usuario autorizado cuyos archivos quieres ver: ");
@@ -523,12 +596,13 @@ public class cliente {
                         salida.println(usuarioAutorizado);
 
                         String listaRespuesta = entrada.readLine();
+                        if (listaRespuesta == null) return;
                         System.out.println("Servidor: " + listaRespuesta);
 
                         if (listaRespuesta.equals("LISTA_ARCHIVOS_AUTORIZADOS:")) {
                             System.out.println("\n--- Archivos de " + usuarioAutorizado + " ---");
                             String archivo;
-                            while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS_AUTORIZADOS:")) {
+                            while ((archivo = entrada.readLine()) != null && !archivo.equals("FIN_LISTA_ARCHIVOS_AUTORIZADOS:")) {
                                 if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
                                     System.out.println(archivo.substring(5));
                                     break;
@@ -544,11 +618,13 @@ public class cliente {
                     break;
                 case "4":
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     enCompartirMenu = false;
                     break;
                 default:
                     respuestaServidor = entrada.readLine();
+                    if (respuestaServidor == null) return;
                     System.out.println("Servidor: " + respuestaServidor);
                     break;
             }
@@ -557,6 +633,7 @@ public class cliente {
 
     private static void manejarDescargaAutorizadaCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner, String usuarioLogueado) throws IOException {
         String respuestaServidor = entrada.readLine();
+        if (respuestaServidor == null) return;
         System.out.println("Servidor: " + respuestaServidor);
 
         if (!respuestaServidor.startsWith("DESCARGA_USUARIO")) return;
@@ -566,6 +643,7 @@ public class cliente {
         salida.println(propietario);
 
         respuestaServidor = entrada.readLine();
+        if (respuestaServidor == null) return;
         System.out.println("Servidor: " + respuestaServidor);
 
         if (respuestaServidor.startsWith("ERROR")) return;
@@ -577,6 +655,7 @@ public class cliente {
         salida.println(nombreArchivo);
 
         String respuestaInicial = entrada.readLine();
+        if (respuestaInicial == null) return;
         System.out.println("Servidor: " + respuestaInicial);
 
         if (respuestaInicial.startsWith("ERROR")) return;
@@ -586,11 +665,13 @@ public class cliente {
             String nombreDescarga = partes.length > 1 ? partes[1] : nombreArchivo;
 
             Path directorioDescargasRaiz = Paths.get("archivos_descargados");
-            Path directorioDescargasUsuario = directorioDescargasRaiz.resolve(usuarioLogueado);
+            String usuarioSeguro = usuarioLogueado.replaceAll("[/\\\\.]", "_");
+            Path directorioDescargasUsuario = directorioDescargasRaiz.resolve(usuarioSeguro);
 
             Files.createDirectories(directorioDescargasUsuario);
 
-            Path rutaGuardar = directorioDescargasUsuario.resolve(nombreDescarga);
+            String nombreDescargaSeguro = nombreDescarga.replaceAll("[/\\\\]", "_");
+            Path rutaGuardar = directorioDescargasUsuario.resolve(nombreDescargaSeguro);
 
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(rutaGuardar.toFile(), false))) {
                 String linea;
@@ -605,13 +686,11 @@ public class cliente {
                 System.out.println("------------------------\n");
 
                 respuestaServidor = entrada.readLine();
+                if (respuestaServidor == null) return;
                 System.out.println("Servidor: " + respuestaServidor);
 
             } catch (IOException e) {
                 System.err.println("Error al guardar el archivo en el cliente: " + e.getMessage());
-                if (entrada.ready()) {
-                    entrada.readLine();
-                }
             }
         }
     }
