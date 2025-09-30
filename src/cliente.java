@@ -42,6 +42,13 @@ public class cliente {
                 }
             }
 
+            String solicitudesInfo = entrada.readLine();
+            if (solicitudesInfo != null && solicitudesInfo.startsWith("SOLICITUDES_INFO")) {
+                System.out.println("Servidor: " + solicitudesInfo);
+            } else if (solicitudesInfo != null && solicitudesInfo.startsWith("SOLICITUDES_PENDIENTES")) {
+                manejarSolicitudesPendientesCliente(entrada, salida, scanner, solicitudesInfo);
+            }
+
             boolean enSesion = true;
             while (enSesion) {
                 String linea;
@@ -78,6 +85,8 @@ public class cliente {
                 } else if (opcion.equalsIgnoreCase("6")) {
                     manejarArchivosCliente(entrada, salida, scanner);
                 } else if (opcion.equalsIgnoreCase("7")) {
+                    manejarListarArchivosOtrosUsuariosCliente(entrada, salida, scanner);
+                } else if (opcion.equalsIgnoreCase("8")) {
                     String respuestaSalida = entrada.readLine();
                     System.out.println("Servidor: " + respuestaSalida);
                     enSesion = false;
@@ -427,6 +436,101 @@ public class cliente {
             System.out.println("---------------------------\n");
         } else {
             System.out.println("Servidor: " + respuesta);
+        }
+    }
+
+    private static void manejarSolicitudesPendientesCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner, String primerMensaje) throws IOException {
+        System.out.println("Servidor: " + primerMensaje);
+        boolean enManejoSolicitudes = true;
+        while (enManejoSolicitudes) {
+            String listaInicio = entrada.readLine();
+            if (listaInicio.startsWith("LISTA_SOLICITUDES:")) {
+                System.out.println("\n--- Solicitudes Pendientes ---");
+                String solicitud;
+                while (!(solicitud = entrada.readLine()).equals("FIN_SOLICITUDES:")) {
+                    System.out.println(solicitud);
+                }
+                System.out.println("----------------------------");
+
+                String opciones = entrada.readLine();
+                System.out.println("Servidor: " + opciones);
+                System.out.print("Tu comando (Ej: A1 para aprobar la solicitud 1, R2 para rechazar la 2, S para Salir): ");
+                String comando = scanner.nextLine();
+                salida.println(comando);
+
+                String respuestaServidor = entrada.readLine();
+                System.out.println("Servidor: " + respuestaServidor);
+
+                if (respuestaServidor.startsWith("SOLICITUDES_SALIDA") || respuestaServidor.startsWith("SOLICITUDES_INFO: No te quedan")) {
+                    enManejoSolicitudes = false;
+                }
+            } else if (listaInicio.startsWith("SOLICITUDES_INFO:")) {
+                System.out.println("Servidor: " + listaInicio);
+                enManejoSolicitudes = false;
+            }
+        }
+    }
+
+    private static void manejarListarArchivosOtrosUsuariosCliente(BufferedReader entrada, PrintWriter salida, Scanner scanner) throws IOException {
+        boolean enCompartirMenu = true;
+        while (enCompartirMenu) {
+            String compartirMenuPrompt;
+            while ((compartirMenuPrompt = entrada.readLine()) != null && !compartirMenuPrompt.startsWith("Por favor")) {
+                System.out.println(compartirMenuPrompt);
+            }
+            System.out.println(compartirMenuPrompt);
+
+            System.out.print("Tu eleccion: ");
+            String opcion = scanner.nextLine();
+            salida.println(opcion);
+
+            String respuestaServidor;
+            switch (opcion) {
+                case "1":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    if (respuestaServidor.startsWith("SOLICITAR_USUARIO")) {
+                        System.out.print("Usuario para solicitar permiso: ");
+                        String usuarioSolicitado = scanner.nextLine();
+                        salida.println(usuarioSolicitado);
+                        System.out.println("Servidor: " + entrada.readLine());
+                    }
+                    break;
+                case "2":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    if (respuestaServidor.startsWith("AUTORIZADOS_USUARIO")) {
+                        System.out.print("Usuario autorizado cuyos archivos quieres ver: ");
+                        String usuarioAutorizado = scanner.nextLine();
+                        salida.println(usuarioAutorizado);
+
+                        String listaRespuesta = entrada.readLine();
+                        System.out.println("Servidor: " + listaRespuesta);
+
+                        if (listaRespuesta.equals("LISTA_ARCHIVOS_AUTORIZADOS:")) {
+                            System.out.println("\n--- Archivos de " + usuarioAutorizado + " ---");
+                            String archivo;
+                            while (!(archivo = entrada.readLine()).equals("FIN_LISTA_ARCHIVOS_AUTORIZADOS:")) {
+                                if (archivo.startsWith("INFO:") || archivo.startsWith("ERROR:")) {
+                                    System.out.println(archivo.substring(6));
+                                    break;
+                                }
+                                System.out.println(archivo);
+                            }
+                            System.out.println("--------------------------------\n");
+                        }
+                    }
+                    break;
+                case "3":
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    enCompartirMenu = false;
+                    break;
+                default:
+                    respuestaServidor = entrada.readLine();
+                    System.out.println("Servidor: " + respuestaServidor);
+                    break;
+            }
         }
     }
 }

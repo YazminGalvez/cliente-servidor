@@ -14,6 +14,8 @@ public class servidor {
     private static final String BLOQUEADOS = "bloqueados.txt";
     private static final String DIRECTORIO_RAIZ_ARCHIVOS = "archivos_usuarios";
     private static final String SEPARADOR = "::";
+    private static final String PERMISOS = "permisos.txt";
+    private static final String SOLICITUDES_PENDIENTES = "solicitudes_pendientes.txt";
 
     public static void main(String[] args) {
         int puerto = 8080;
@@ -58,6 +60,8 @@ public class servidor {
                 }
             }
 
+            manejarSolicitudesPendientes(entrada, salida, usuarioLogueado);
+
             boolean seguirEnSesion = true;
             while (seguirEnSesion) {
                 salida.println("MENU:");
@@ -67,7 +71,8 @@ public class servidor {
                 salida.println("4. Eliminar mi cuenta");
                 salida.println("5. Bloquear/Desbloquear Usuario");
                 salida.println("6. Gestion de Archivos");
-                salida.println("7. Salir");
+                salida.println("7. Listar archivos de otro usuario");
+                salida.println("8. Salir");
                 salida.println("Por favor, ingresa el numero de la opcion que desees.");
                 String opcionStr = entrada.readLine();
 
@@ -114,11 +119,14 @@ public class servidor {
                             manejarArchivos(entrada, salida, usuarioLogueado);
                             break;
                         case 7:
+                            manejarListarArchivosOtrosUsuarios(entrada, salida, usuarioLogueado);
+                            break;
+                        case 8:
                             salida.println("Sesion cerrada. Adios.");
                             seguirEnSesion = false;
                             break;
                         default:
-                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 7.");
+                            salida.println("OPCION_INVALIDA: Opcion no valida. Por favor, elige un numero del 1 al 8.");
                             break;
                     }
                 } catch (NumberFormatException e) {
@@ -898,5 +906,260 @@ public class servidor {
             }
         }
         salida.println("FIN_LISTA_BLOQUEADOS:");
+    }
+
+    private static void manejarListarArchivosOtrosUsuarios(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        salida.println("COMPARTIR_MENU:");
+        salida.println("1. Solicitar ver archivos de otro usuario");
+        salida.println("2. Ver archivos de usuario autorizado");
+        salida.println("3. Volver al menu principal");
+        salida.println("Por favor, ingresa el numero de la opcion que desees.");
+
+        String opcionStr = entrada.readLine();
+        if (opcionStr == null) return;
+
+        try {
+            int opcion = Integer.parseInt(opcionStr);
+            switch (opcion) {
+                case 1:
+                    solicitarVerArchivos(entrada, salida, usuarioLogueado);
+                    break;
+                case 2:
+                    verArchivosAutorizados(entrada, salida, usuarioLogueado);
+                    break;
+                case 3:
+                    salida.println("COMPARTIR_SALIDA: Volviendo al menu principal.");
+                    break;
+                default:
+                    salida.println("OPCION_INVALIDA: Opcion no valida.");
+            }
+        } catch (NumberFormatException e) {
+            salida.println("ERROR: Ingresa un numero valido.");
+        }
+    }
+
+    private static void solicitarVerArchivos(BufferedReader entrada, PrintWriter salida, String remitente) throws IOException {
+        salida.println("SOLICITAR_USUARIO: Ingresa el usuario a quien le pides permiso.");
+        String destinatario = entrada.readLine();
+
+        if (destinatario == null) return;
+
+        if (!usuarioExiste(destinatario)) {
+            salida.println("ERROR: El usuario '" + destinatario + "' no existe.");
+            return;
+        }
+
+        if (remitente.equals(destinatario)) {
+            salida.println("ERROR: No puedes solicitar permiso a ti mismo.");
+            return;
+        }
+
+        if (tienePermiso(destinatario, remitente)) {
+            salida.println("INFO: Ya tienes permiso permanente para ver los archivos de '" + destinatario + "'.");
+            return;
+        }
+
+        if (existeSolicitudPendiente(remitente, destinatario)) {
+            salida.println("INFO: Ya existe una solicitud pendiente de tu parte hacia '" + destinatario + "'.");
+            return;
+        }
+
+        if (guardarSolicitudPendiente(remitente, destinatario)) {
+            salida.println("SOLICITUD_EXITOSA: Solicitud enviada a '" + destinatario + "'. Tendrá que aprobarla al iniciar sesión.");
+        } else {
+            salida.println("ERROR: Error al enviar la solicitud.");
+        }
+    }
+
+    private static boolean guardarSolicitudPendiente(String solicitante, String propietario) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(SOLICITUDES_PENDIENTES, true))) {
+            bw.write(solicitante + SEPARADOR + propietario);
+            bw.newLine();
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al guardar la solicitud pendiente: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean existeSolicitudPendiente(String solicitante, String propietario) {
+        try (BufferedReader br = new BufferedReader(new FileReader(SOLICITUDES_PENDIENTES))) {
+            String linea;
+            String busqueda = solicitante + SEPARADOR + propietario;
+            while ((linea = br.readLine()) != null) {
+                if (linea.equals(busqueda)) {
+                    return true;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            return false;
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de solicitudes pendientes: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private static List<String> obtenerSolicitudesPendientes(String propietario) {
+        List<String> solicitantes = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(SOLICITUDES_PENDIENTES))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(SEPARADOR);
+                if (partes.length == 2 && partes[1].equals(propietario)) {
+                    solicitantes.add(partes[0]);
+                }
+            }
+        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
+            System.err.println("Error al obtener solicitudes pendientes: " + e.getMessage());
+        }
+        return solicitantes;
+    }
+
+    private static boolean eliminarSolicitud(String solicitante, String propietario) {
+        String lineaAEliminar = solicitante + SEPARADOR + propietario;
+        return eliminarLineaDeArchivo(lineaAEliminar, SOLICITUDES_PENDIENTES);
+    }
+
+    private static boolean guardarPermiso(String propietario, String autorizado) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(PERMISOS, true))) {
+            bw.write(propietario + SEPARADOR + autorizado);
+            bw.newLine();
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al guardar el permiso: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean tienePermiso(String propietario, String solicitante) {
+        try (BufferedReader br = new BufferedReader(new FileReader(PERMISOS))) {
+            String linea;
+            String busqueda = propietario + SEPARADOR + solicitante;
+            while ((linea = br.readLine()) != null) {
+                if (linea.equals(busqueda)) {
+                    return true;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            return false;
+        } catch (IOException e) {
+            System.err.println("Error al leer el archivo de permisos: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private static void manejarSolicitudesPendientes(BufferedReader entrada, PrintWriter salida, String propietario) throws IOException {
+        List<String> solicitantes = obtenerSolicitudesPendientes(propietario);
+
+        if (solicitantes.isEmpty()) {
+            salida.println("SOLICITUDES_INFO: No tienes solicitudes pendientes.");
+            return;
+        }
+
+        salida.println("SOLICITUDES_PENDIENTES: Tienes " + solicitantes.size() + " solicitud(es) pendiente(s).");
+        boolean enManejoSolicitudes = true;
+        while (enManejoSolicitudes) {
+            salida.println("LISTA_SOLICITUDES:");
+            for (int i = 0; i < solicitantes.size(); i++) {
+                salida.println((i + 1) + ". Solicitud de: " + solicitantes.get(i));
+            }
+            salida.println("FIN_SOLICITUDES:");
+            salida.println("OPCIONES_SOLICITUDES: Ingresa el numero para (A)probar o (R)echazar. (S)alir");
+
+            String comando = entrada.readLine();
+            if (comando == null || comando.equalsIgnoreCase("S")) {
+                salida.println("SOLICITUDES_SALIDA: Saliendo de la gestion de solicitudes.");
+                enManejoSolicitudes = false;
+                continue;
+            }
+
+            try {
+                if (comando.toLowerCase().startsWith("a")) {
+                    int numSolicitud = Integer.parseInt(comando.substring(1).trim()) - 1;
+                    if (numSolicitud >= 0 && numSolicitud < solicitantes.size()) {
+                        String solicitante = solicitantes.get(numSolicitud);
+                        if (guardarPermiso(propietario, solicitante)) {
+                            eliminarSolicitud(solicitante, propietario);
+                            solicitantes.remove(numSolicitud);
+                            salida.println("SOLICITUD_APROBADA: Has dado permiso permanente a '" + solicitante + "'.");
+                        } else {
+                            salida.println("ERROR: No se pudo guardar el permiso.");
+                        }
+                    } else {
+                        salida.println("ERROR: Número de solicitud no válido.");
+                    }
+                } else if (comando.toLowerCase().startsWith("r")) {
+                    int numSolicitud = Integer.parseInt(comando.substring(1).trim()) - 1;
+                    if (numSolicitud >= 0 && numSolicitud < solicitantes.size()) {
+                        String solicitante = solicitantes.get(numSolicitud);
+                        eliminarSolicitud(solicitante, propietario);
+                        solicitantes.remove(numSolicitud);
+                        salida.println("SOLICITUD_RECHAZADA: Solicitud de '" + solicitante + "' rechazada.");
+                    } else {
+                        salida.println("ERROR: Número de solicitud no válido.");
+                    }
+                } else {
+                    salida.println("OPCION_INVALIDA: Comando no reconocido. Usa A[num] o R[num] o S.");
+                }
+
+                if (solicitantes.isEmpty()) {
+                    salida.println("SOLICITUDES_INFO: No te quedan solicitudes pendientes.");
+                    enManejoSolicitudes = false;
+                }
+
+            } catch (NumberFormatException e) {
+                salida.println("ERROR: Comando no válido. Debes ingresar A o R seguido del número de solicitud.");
+            }
+        }
+    }
+
+    private static void verArchivosAutorizados(BufferedReader entrada, PrintWriter salida, String usuarioLogueado) throws IOException {
+        salida.println("AUTORIZADOS_USUARIO: Ingresa el usuario cuyos archivos quieres ver.");
+        String propietario = entrada.readLine();
+
+        if (propietario == null) return;
+
+        if (usuarioLogueado.equals(propietario)) {
+            salida.println("ERROR: Usa la opcion 6 para ver tus propios archivos.");
+            return;
+        }
+
+        if (!usuarioExiste(propietario)) {
+            salida.println("ERROR: El usuario '" + propietario + "' no existe.");
+            return;
+        }
+
+        if (tienePermiso(propietario, usuarioLogueado)) {
+            Path pathUsuario = Paths.get(DIRECTORIO_RAIZ_ARCHIVOS, propietario);
+
+            if (!Files.exists(pathUsuario) || !Files.isDirectory(pathUsuario)) {
+                salida.println("ERROR: El directorio del usuario '" + propietario + "' no fue encontrado.");
+                return;
+            }
+
+            salida.println("LISTA_ARCHIVOS_AUTORIZADOS:");
+            try (var stream = Files.list(pathUsuario)) {
+                List<String> archivos = stream
+                        .filter(Files::isRegularFile)
+                        .map(Path::getFileName)
+                        .map(Path::toString)
+                        .collect(Collectors.toList());
+
+                if (archivos.isEmpty()) {
+                    salida.println("INFO: El usuario '" + propietario + "' no tiene archivos.");
+                } else {
+                    for (String archivo : archivos) {
+                        salida.println("- " + archivo);
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error al listar archivos de usuario autorizado: " + e.getMessage());
+                salida.println("ERROR: No se pudo listar los archivos de '" + propietario + "'.");
+            }
+            salida.println("FIN_LISTA_ARCHIVOS_AUTORIZADOS:");
+        } else {
+            salida.println("ERROR: No tienes permiso permanente para ver los archivos de '" + propietario + "'. Debes solicitarlo primero.");
+        }
     }
 }
